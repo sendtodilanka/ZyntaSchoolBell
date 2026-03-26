@@ -5,12 +5,17 @@
   "alarms": [
     { "id": "rd-01", "time": "07:30", "label": "Opening Bell", "audioKey": "opening_bell", "enabled": true },
     { "id": "rd-02", "time": "07:35", "label": "Assembly", "audioKey": "assembly", "enabled": true },
-    { "id": "rd-03", "time": "08:00", "label": "Period Start", "audioKey": "period_start", "enabled": true },
-    { "id": "rd-04", "time": "10:00", "label": "Interval", "audioKey": "interval", "enabled": true },
-    { "id": "rd-05", "time": "10:20", "label": "Warning Bell", "audioKey": "warning_bell", "enabled": true },
-    { "id": "rd-06", "time": "10:30", "label": "Afternoon Bell", "audioKey": "afternoon_bell", "enabled": true },
-    { "id": "rd-07", "time": "12:30", "label": "Lunch Break", "audioKey": "lunch_break", "enabled": true },
-    { "id": "rd-08", "time": "13:00", "label": "Afternoon Bell", "audioKey": "afternoon_bell", "enabled": true },
-    { "id": "rd-09", "time": "15:30", "label": "Closing Bell", "audioKey": "closing_bell", "enabled": true }
+    { "id": "rd-03", "time": "08:00", "label": "Period 1", "audioKey": "period_1", "enabled": true },
+    { "id": "rd-04", "time": "08:40", "label": "Period 2", "audioKey": "period_2", "enabled": true },
+    { "id": "rd-05", "time": "09:20", "label": "Period 3", "audioKey": "period_3", "enabled": true },
+    { "id": "rd-06", "time": "10:00", "label": "Interval", "audioKey": "interval", "enabled": true },
+    { "id": "rd-07", "time": "10:20", "label": "Warning Bell", "audioKey": "warning_bell", "enabled": true },
+    { "id": "rd-08", "time": "10:30", "label": "Period 4", "audioKey": "period_4", "enabled": true },
+    { "id": "rd-09", "time": "11:10", "label": "Period 5", "audioKey": "period_5", "enabled": true },
+    { "id": "rd-10", "time": "11:50", "label": "Period 6", "audioKey": "period_6", "enabled": true },
+    { "id": "rd-11", "time": "12:30", "label": "Lunch Break", "audioKey": "lunch_break", "enabled": true },
+    { "id": "rd-12", "time": "13:00", "label": "Period 7", "audioKey": "period_7", "enabled": true },
+    { "id": "rd-13", "time": "13:40", "label": "Period 8", "audioKey": "period_8", "enabled": true },
+    { "id": "rd-14", "time": "14:20", "label": "Closing Bell", "audioKey": "closing_bell", "enabled": true }
   ]
 }

@@ -47,10 +47,45 @@ ANNOUNCEMENTS = {
         "ta": "\u0baa\u0bb3\u0bcd\u0bb3\u0bbf \u0ba4\u0bca\u0b9f\u0b99\u0bcd\u0b95\u0bc1\u0b95\u0bbf\u0bb1\u0ba4\u0bc1. \u0bae\u0bbe\u0ba3\u0bb5\u0bb0\u0bcd\u0b95\u0bb3\u0bcd \u0b9a\u0bc7\u0bb0 \u0bb5\u0bc7\u0ba3\u0bcd\u0b9f\u0bc1\u0bae\u0bcd.",
         "en": "School is beginning. Students please assemble.",
     },
-    "period_start": {
-        "si": "\u0d9a\u0dcf\u0dbd \u0dc3\u0dd3\u0db8\u0dcf\u0dc0 \u0d86\u0dbb\u0db8\u0dca\u0db7 \u0dc0\u0dd3 \u0d87\u0dad.",
-        "ta": "\u0b95\u0bbe\u0bb2\u0bae\u0bcd \u0ba4\u0bca\u0b9f\u0b99\u0bcd\u0b95\u0bbf\u0baf\u0ba4\u0bc1.",
-        "en": "The period has begun.",
+    "period_1": {
+        "si": "පළමු කාලච්ඡේදය ආරම්භ වී ඇත.",
+        "en": "The first period has begun.",
+        "ta": "முதல் பாடவேளை தொடங்கியது.",
+    },
+    "period_2": {
+        "si": "දෙවන කාලච්ඡේදය ආරම්භ වී ඇත.",
+        "en": "The second period has begun.",
+        "ta": "இரண்டாம் பாடவேளை தொடங்கியது.",
+    },
+    "period_3": {
+        "si": "තෙවන කාලච්ඡේදය ආරම්භ වී ඇත.",
+        "en": "The third period has begun.",
+        "ta": "மூன்றாம் பாடவேளை தொடங்கியது.",
+    },
+    "period_4": {
+        "si": "සිව්වන කාලච්ඡේදය ආරම්භ වී ඇත.",
+        "en": "The fourth period has begun.",
+        "ta": "நான்காம் பாடவேளை தொடங்கியது.",
+    },
+    "period_5": {
+        "si": "පස්වන කාලච්ඡේදය ආරම්භ වී ඇත.",
+        "en": "The fifth period has begun.",
+        "ta": "ஐந்தாம் பாடவேளை தொடங்கியது.",
+    },
+    "period_6": {
+        "si": "හයවන කාලච්ඡේදය ආරම්භ වී ඇත.",
+        "en": "The sixth period has begun.",
+        "ta": "ஆறாம் பாடவேளை தொடங்கியது.",
+    },
+    "period_7": {
+        "si": "හත්වන කාලච්ඡේදය ආරම්භ වී ඇත.",
+        "en": "The seventh period has begun.",
+        "ta": "ஏழாம் பாடவேளை தொடங்கியது.",
+    },
+    "period_8": {
+        "si": "අටවන කාලච්ඡේදය ආරම්භ වී ඇත.",
+        "en": "The eighth period has begun.",
+        "ta": "எட்டாம் பாடவேளை தொடங்கியது.",
     },
     "interval": {
         "si": "\u0dc0\u0dd2\u0dc0\u0dda\u0d9a \u0d9a\u0dcf\u0dbd\u0dba. \u0dc3\u0dd2\u0dc3\u0dd4\u0db1\u0dca\u0da7 \u0d9a\u0dd9\u0da7\u0dd2 \u0dc0\u0dd2\u0dc0\u0dda\u0d9a\u0dba\u0d9a\u0dca \u0d9c\u0dad \u0dc4\u0dd0\u0d9a.",
@@ -127,7 +162,7 @@ async def main():
 
     for audio_key, texts in ANNOUNCEMENTS.items():
         print(f"\nGenerating: {audio_key}")
-        for lang in ["si", "ta", "en"]:
+        for lang in ["si", "en", "ta"]:
             total += 1
             text = texts[lang]
             voice_config = VOICES[lang]

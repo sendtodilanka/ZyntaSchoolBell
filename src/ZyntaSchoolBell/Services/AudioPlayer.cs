@@ -20,7 +20,7 @@ namespace ZyntaSchoolBell.Services
     {
         private readonly string _audioBasePath;
         private readonly object _lock = new object();
-        private static readonly string[] Languages = { "si", "ta", "en" };
+        private static readonly string[] Languages = { "si", "en", "ta" };
 
         private WaveOutEvent _waveOut;
         private AudioFileReader _reader;
