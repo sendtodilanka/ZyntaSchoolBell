@@ -11,6 +11,8 @@ namespace ZyntaSchoolBell.Services
         private const long MaxFileSize = 1024 * 1024; // 1MB
         private const int MaxBackups = 3;
 
+        private static StreamWriter _writer;
+
         static Logger()
         {
             _logDir = Path.Combine(
@@ -32,14 +34,38 @@ namespace ZyntaSchoolBell.Services
                 {
                     Directory.CreateDirectory(_logDir);
                     RotateIfNeeded();
-                    string line = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [{level}] {message}{Environment.NewLine}";
-                    File.AppendAllText(_logFile, line);
+                    EnsureWriter();
+
+                    // Strip newlines to prevent log injection
+                    string sanitized = message.Replace("\r", "").Replace("\n", " | ");
+                    _writer.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [{level}] {sanitized}");
+                    _writer.Flush();
                 }
                 catch
                 {
                     // Logging must never crash the app
+                    CloseWriter();
                 }
             }
+        }
+
+        private static void EnsureWriter()
+        {
+            if (_writer == null)
+            {
+                var stream = new FileStream(_logFile, FileMode.Append, FileAccess.Write, FileShare.Read);
+                _writer = new StreamWriter(stream) { AutoFlush = false };
+            }
+        }
+
+        private static void CloseWriter()
+        {
+            try
+            {
+                _writer?.Dispose();
+            }
+            catch { /* ignore */ }
+            _writer = null;
         }
 
         private static void RotateIfNeeded()
@@ -49,6 +75,8 @@ namespace ZyntaSchoolBell.Services
                 if (!File.Exists(_logFile)) return;
                 var info = new FileInfo(_logFile);
                 if (info.Length < MaxFileSize) return;
+
+                CloseWriter();
 
                 for (int i = MaxBackups - 1; i >= 1; i--)
                 {

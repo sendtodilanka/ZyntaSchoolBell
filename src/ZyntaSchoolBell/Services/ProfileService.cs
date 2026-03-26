@@ -34,6 +34,24 @@ namespace ZyntaSchoolBell.Services
             Directory.CreateDirectory(_profilesDir);
         }
 
+        /// <summary>
+        /// Sanitizes a profile ID to prevent path traversal attacks.
+        /// Only allows alphanumeric characters, underscores, and hyphens.
+        /// </summary>
+        private static string SanitizeId(string id)
+        {
+            if (string.IsNullOrWhiteSpace(id))
+                throw new ArgumentException("Profile ID cannot be empty.");
+
+            // Strip anything that isn't alphanumeric, underscore, or hyphen
+            var sanitized = new string(id.Where(c => char.IsLetterOrDigit(c) || c == '_' || c == '-').ToArray());
+
+            if (string.IsNullOrEmpty(sanitized))
+                throw new ArgumentException("Profile ID contains no valid characters.");
+
+            return sanitized;
+        }
+
         public List<Profile> LoadAllProfiles()
         {
             var profiles = new List<Profile>();
@@ -64,7 +82,7 @@ namespace ZyntaSchoolBell.Services
 
         public Profile LoadProfile(string id)
         {
-            string file = Path.Combine(_profilesDir, id + ".json");
+            string file = Path.Combine(_profilesDir, SanitizeId(id) + ".json");
             if (!File.Exists(file)) return null;
 
             try
@@ -95,7 +113,7 @@ namespace ZyntaSchoolBell.Services
                     .ToList();
 
                 string json = JsonConvert.SerializeObject(profile, Formatting.Indented);
-                string file = Path.Combine(_profilesDir, profile.Id + ".json");
+                string file = Path.Combine(_profilesDir, SanitizeId(profile.Id) + ".json");
                 AtomicWrite(file, json);
                 Logger.Info($"Saved profile: {profile.Id} ({profile.Name})");
             }
@@ -110,7 +128,7 @@ namespace ZyntaSchoolBell.Services
         {
             try
             {
-                string file = Path.Combine(_profilesDir, id + ".json");
+                string file = Path.Combine(_profilesDir, SanitizeId(id) + ".json");
                 if (File.Exists(file))
                 {
                     File.Delete(file);
@@ -164,8 +182,15 @@ namespace ZyntaSchoolBell.Services
             File.WriteAllText(tmpFile, content, Utf8NoBom);
 
             if (File.Exists(filePath))
-                File.Delete(filePath);
-            File.Move(tmpFile, filePath);
+            {
+                // File.Replace is atomic on NTFS — no TOCTOU gap
+                File.Replace(tmpFile, filePath, filePath + ".bak");
+                try { File.Delete(filePath + ".bak"); } catch { /* best effort */ }
+            }
+            else
+            {
+                File.Move(tmpFile, filePath);
+            }
         }
     }
 }

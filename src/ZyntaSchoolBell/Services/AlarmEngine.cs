@@ -115,6 +115,9 @@ namespace ZyntaSchoolBell.Services
         {
             if (_disposed) return;
 
+            bool doMidnightReset = false;
+            var alarmsToFire = new List<AlarmEntry>();
+
             lock (_lock)
             {
                 DateTime now = DateTime.Now;
@@ -124,8 +127,8 @@ namespace ZyntaSchoolBell.Services
                 {
                     _firedTodaySet.Clear();
                     _lastDate = now.Date;
+                    doMidnightReset = true;
                     Logger.Info("Midnight reset: cleared fired alarms");
-                    MidnightReset?.Invoke(this, EventArgs.Empty);
                 }
 
                 if (IsMuted) return;
@@ -140,16 +143,27 @@ namespace ZyntaSchoolBell.Services
                     {
                         _firedTodaySet.Add(alarm.Id);
                         Logger.Info($"Alarm fired: {alarm.Time} - {alarm.Label} ({alarm.AudioKey})");
-
-                        try
-                        {
-                            AlarmFired?.Invoke(this, new AlarmFiredEventArgs(alarm));
-                        }
-                        catch (Exception ex)
-                        {
-                            Logger.Error("Error in AlarmFired handler", ex);
-                        }
+                        alarmsToFire.Add(alarm);
                     }
+                }
+            }
+
+            // Raise events OUTSIDE the lock to prevent deadlock with Control.Invoke()
+            if (doMidnightReset)
+            {
+                try { MidnightReset?.Invoke(this, EventArgs.Empty); }
+                catch (Exception ex) { Logger.Error("Error in MidnightReset handler", ex); }
+            }
+
+            foreach (var alarm in alarmsToFire)
+            {
+                try
+                {
+                    AlarmFired?.Invoke(this, new AlarmFiredEventArgs(alarm));
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error("Error in AlarmFired handler", ex);
                 }
             }
         }

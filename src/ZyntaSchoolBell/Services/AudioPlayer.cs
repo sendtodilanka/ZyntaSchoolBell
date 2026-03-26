@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using NAudio.Wave;
+using ZyntaSchoolBell.Models;
 
 namespace ZyntaSchoolBell.Services
 {
@@ -40,6 +42,13 @@ namespace ZyntaSchoolBell.Services
 
         public void Play(string audioKey)
         {
+            // Validate audioKey against allowlist to prevent path traversal
+            if (!AudioKeys.All.Contains(audioKey))
+            {
+                Logger.Warn($"Rejected invalid audio key: {audioKey}");
+                return;
+            }
+
             lock (_lock)
             {
                 CancelCurrentInternal();

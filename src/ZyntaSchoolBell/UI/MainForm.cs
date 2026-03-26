@@ -37,6 +37,7 @@ namespace ZyntaSchoolBell.UI
         private CheckBox _muteCheckbox;
         private Button _addAlarmBtn;
         private System.Windows.Forms.Timer _uiTimer;
+        private System.Windows.Forms.Timer _volumeSaveTimer;
 
         private bool _realExit;
 
@@ -294,7 +295,13 @@ namespace ZyntaSchoolBell.UI
             string name = PromptInput("New Schedule", "Enter schedule name:");
             if (string.IsNullOrWhiteSpace(name)) return;
 
-            string id = name.ToLowerInvariant().Replace(" ", "_");
+            // Limit length and strip control characters
+            name = name.Trim();
+            if (name.Length > 50) name = name.Substring(0, 50);
+
+            string id = new string(name.ToLowerInvariant()
+                .Select(c => char.IsLetterOrDigit(c) ? c : '_')
+                .ToArray());
             if (_profiles.Any(p => p.Id == id))
             {
                 MessageBox.Show(this, "A schedule with that name already exists.", "Error",
@@ -353,7 +360,19 @@ namespace ZyntaSchoolBell.UI
             _volumeLabel.Text = $"{vol}%";
             _audioPlayer.SetVolume(vol);
             _settings.Volume = vol;
-            _profileService.SaveSettings(_settings);
+
+            // Debounce: save settings 500ms after last change instead of on every tick
+            if (_volumeSaveTimer == null)
+            {
+                _volumeSaveTimer = new System.Windows.Forms.Timer { Interval = 500 };
+                _volumeSaveTimer.Tick += (s, ev) =>
+                {
+                    _volumeSaveTimer.Stop();
+                    _profileService.SaveSettings(_settings);
+                };
+            }
+            _volumeSaveTimer.Stop();
+            _volumeSaveTimer.Start();
         }
 
         private void OnMuteChanged(object sender, EventArgs e)
@@ -550,15 +569,28 @@ namespace ZyntaSchoolBell.UI
         private void RealExit()
         {
             _realExit = true;
-
-            _uiTimer.Stop();
-            _uiTimer.Dispose();
-            _alarmEngine.Dispose();
-            _audioPlayer.Dispose();
-            _sleepWakeHandler.Dispose();
-            _trayManager.Dispose();
-
             Application.Exit();
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                // Unsubscribe events
+                _alarmEngine.AlarmFired -= OnAlarmFired;
+                _alarmEngine.MidnightReset -= OnMidnightReset;
+                _audioPlayer.PlaybackError -= OnPlaybackError;
+
+                _uiTimer?.Stop();
+                _uiTimer?.Dispose();
+                _volumeSaveTimer?.Stop();
+                _volumeSaveTimer?.Dispose();
+                _alarmEngine?.Dispose();
+                _audioPlayer?.Dispose();
+                _sleepWakeHandler?.Dispose();
+                _trayManager?.Dispose();
+            }
+            base.Dispose(disposing);
         }
 
         private static string FormatTime12(string time24)

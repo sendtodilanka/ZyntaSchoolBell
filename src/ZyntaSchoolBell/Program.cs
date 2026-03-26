@@ -11,7 +11,8 @@ namespace ZyntaSchoolBell
         [STAThread]
         static void Main()
         {
-            using (var mutex = new Mutex(true, "ZyntaSchoolBell_SingleInstance", out bool createdNew))
+            // GUID-based mutex name to prevent name squatting by other processes
+            using (var mutex = new Mutex(true, "Global\\{7A3F8B2E-1D4C-4E9A-B5F6-8C2D3E4F5A6B}", out bool createdNew))
             {
                 if (!createdNew)
                 {
