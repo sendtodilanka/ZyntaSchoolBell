@@ -56,6 +56,15 @@
   <ItemGroup>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Models\AlarmEntry.cs" />
+    <Compile Include="Models\Profile.cs" />
+    <Compile Include="Models\AppSettings.cs" />
+    <Compile Include="Models\AudioKeys.cs" />
+    <Compile Include="Services\Logger.cs" />
+    <Compile Include="Services\ProfileService.cs" />
+    <Compile Include="Services\AudioPlayer.cs" />
+    <Compile Include="Services\AlarmEngine.cs" />
+    <Compile Include="Services\SleepWakeHandler.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
