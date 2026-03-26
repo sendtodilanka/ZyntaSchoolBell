@@ -65,6 +65,8 @@
     <Compile Include="Services\AudioPlayer.cs" />
     <Compile Include="Services\AlarmEngine.cs" />
     <Compile Include="Services\SleepWakeHandler.cs" />
+    <Compile Include="Services\WakeScheduler.cs" />
+    <Compile Include="Services\SystemVolumeManager.cs" />
     <Compile Include="UI\MainForm.cs" />
     <Compile Include="UI\AddEditAlarmDialog.cs" />
     <Compile Include="UI\TrayManager.cs" />

@@ -16,6 +16,7 @@ namespace ZyntaSchoolBell.UI
         private readonly IAudioPlayer _audioPlayer;
         private readonly AlarmEngine _alarmEngine;
         private readonly SleepWakeHandler _sleepWakeHandler;
+        private readonly WakeScheduler _wakeScheduler;
         private readonly TrayManager _trayManager;
 
         // State
@@ -48,6 +49,7 @@ namespace ZyntaSchoolBell.UI
             _audioPlayer = new AudioPlayer(audioPath);
             _alarmEngine = new AlarmEngine();
             _sleepWakeHandler = new SleepWakeHandler(_alarmEngine);
+            _wakeScheduler = new WakeScheduler(_alarmEngine);
             _trayManager = new TrayManager();
 
             InitializeUI();
@@ -198,6 +200,7 @@ namespace ZyntaSchoolBell.UI
             _sleepWakeHandler.SystemResumed += (s, e) =>
             {
                 Logger.Info("System resumed — UI notified");
+                _wakeScheduler.Recalculate();
             };
 
             KeyDown += OnKeyDown;
@@ -283,6 +286,7 @@ namespace ZyntaSchoolBell.UI
                 _settings.ActiveProfileId = _activeProfile.Id;
                 _profileService.SaveSettings(_settings);
                 _alarmEngine.UpdateAlarms(_activeProfile.Alarms);
+                _wakeScheduler.Recalculate();
                 _trayManager.UpdateScheduleName(_activeProfile.Name);
             }
 
@@ -454,6 +458,7 @@ namespace ZyntaSchoolBell.UI
         {
             _profileService.SaveProfile(_activeProfile);
             _alarmEngine.UpdateAlarms(_activeProfile.Alarms);
+            _wakeScheduler.Recalculate();
             RefreshAlarmGrid();
             UpdateStatus();
         }
@@ -466,10 +471,16 @@ namespace ZyntaSchoolBell.UI
                 return;
             }
 
+            // Ensure system volume is at the desired level before playing
+            SystemVolumeManager.EnsureVolume(_settings.Volume);
+
             _audioPlayer.CancelCurrent();
             _audioPlayer.Play(e.Alarm.AudioKey);
             _trayManager.ShowBalloon("Bell", $"{e.Alarm.Label} — {FormatTime12(e.Alarm.Time)}");
             UpdateStatus();
+
+            // Recalculate wake timer for the next alarm
+            _wakeScheduler.Recalculate();
         }
 
         private void OnMidnightReset(object sender, EventArgs e)
@@ -587,6 +598,7 @@ namespace ZyntaSchoolBell.UI
                 _volumeSaveTimer?.Dispose();
                 _alarmEngine?.Dispose();
                 _audioPlayer?.Dispose();
+                _wakeScheduler?.Dispose();
                 _sleepWakeHandler?.Dispose();
                 _trayManager?.Dispose();
             }
