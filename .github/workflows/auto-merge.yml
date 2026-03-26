@@ -1,0 +1,162 @@
+name: Auto PR & Merge
+
+# Runs after CI Gate passes on feature branches
+on:
+  workflow_run:
+    workflows: ["CI Gate"]
+    types: [completed]
+    branches-ignore:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-pr-merge:
+    name: Auto Create PR → Merge → Cleanup
+    runs-on: ubuntu-latest
+    # Only run if CI Gate succeeded and it was a push event (not PR)
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.workflow_run.head_branch }}
+
+      - name: Get branch info
+        id: branch
+        run: |
+          BRANCH="${{ github.event.workflow_run.head_branch }}"
+          echo "name=$BRANCH" >> "$GITHUB_OUTPUT"
+
+          # Get commit info for PR description
+          COMMIT_MSG=$(git log -1 --pretty=format:"%s")
+          COMMIT_BODY=$(git log -1 --pretty=format:"%b")
+          COMMIT_SHA=$(git rev-parse --short HEAD)
+          AUTHOR=$(git log -1 --pretty=format:"%an")
+
+          echo "commit_msg=$COMMIT_MSG" >> "$GITHUB_OUTPUT"
+          echo "commit_sha=$COMMIT_SHA" >> "$GITHUB_OUTPUT"
+          echo "author=$AUTHOR" >> "$GITHUB_OUTPUT"
+
+          # Multi-line body needs delimiter
+          {
+            echo "commit_body<<BODY_EOF"
+            echo "$COMMIT_BODY"
+            echo "BODY_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+          # Count commits ahead of main
+          AHEAD=$(git rev-list --count origin/main..HEAD 2>/dev/null || echo "?")
+          echo "commits_ahead=$AHEAD" >> "$GITHUB_OUTPUT"
+
+      - name: Check if PR already exists
+        id: check_pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="${{ steps.branch.outputs.name }}"
+          EXISTING=$(gh pr list --head "$BRANCH" --base main --state open --json number --jq '.[0].number // empty')
+          if [ -n "$EXISTING" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "pr_number=$EXISTING" >> "$GITHUB_OUTPUT"
+            echo "PR #$EXISTING already exists for branch $BRANCH"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "No existing PR for branch $BRANCH"
+          fi
+
+      - name: Create Pull Request
+        id: create_pr
+        if: steps.check_pr.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="${{ steps.branch.outputs.name }}"
+          COMMIT_MSG="${{ steps.branch.outputs.commit_msg }}"
+          AHEAD="${{ steps.branch.outputs.commits_ahead }}"
+          SHA="${{ steps.branch.outputs.commit_sha }}"
+          AUTHOR="${{ steps.branch.outputs.author }}"
+
+          # Create PR with auto-generated title from latest commit
+          PR_URL=$(gh pr create \
+            --base main \
+            --head "$BRANCH" \
+            --title "$COMMIT_MSG" \
+            --body "$(cat <<EOF
+          ## Auto-generated PR
+
+          **Branch:** \`$BRANCH\`
+          **Commits:** $AHEAD ahead of main
+          **Latest commit:** \`$SHA\` by $AUTHOR
+
+          ### CI Gate Status
+          All checks passed:
+          - [x] Build & Compile
+          - [x] Security Analysis
+          - [x] Performance & Reliability
+          - [x] Installer Build
+
+          ---
+          *This PR was auto-created after CI Gate passed. It will be auto-merged if all PR checks pass.*
+          EOF
+          )")
+
+          PR_NUMBER=$(echo "$PR_URL" | grep -oP '\d+$')
+          echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "pr_url=$PR_URL" >> "$GITHUB_OUTPUT"
+          echo "Created PR #$PR_NUMBER: $PR_URL"
+
+      - name: Get PR number
+        id: pr
+        run: |
+          if [ "${{ steps.check_pr.outputs.exists }}" == "true" ]; then
+            echo "number=${{ steps.check_pr.outputs.pr_number }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "number=${{ steps.create_pr.outputs.pr_number }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Enable auto-merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER="${{ steps.pr.outputs.number }}"
+          echo "Enabling auto-merge for PR #$PR_NUMBER..."
+
+          # Try to enable auto-merge (requires branch protection rules)
+          gh pr merge "$PR_NUMBER" --auto --squash --delete-branch || {
+            echo "Auto-merge not available (branch protection may not be configured)."
+            echo "Attempting direct merge..."
+
+            # Wait a moment for GitHub to process the PR
+            sleep 5
+
+            # Check if PR is mergeable
+            MERGEABLE=$(gh pr view "$PR_NUMBER" --json mergeable --jq '.mergeable')
+            echo "PR mergeable status: $MERGEABLE"
+
+            if [ "$MERGEABLE" == "MERGEABLE" ]; then
+              gh pr merge "$PR_NUMBER" --squash --delete-branch \
+                --subject "$(gh pr view "$PR_NUMBER" --json title --jq '.title')" \
+                --body "Auto-merged after CI Gate passed. PR #$PR_NUMBER"
+              echo "PR #$PR_NUMBER merged and branch deleted."
+            else
+              echo "::warning::PR #$PR_NUMBER is not mergeable yet (status: $MERGEABLE). Manual merge needed."
+            fi
+          }
+
+      - name: Summary
+        run: |
+          BRANCH="${{ steps.branch.outputs.name }}"
+          PR_NUMBER="${{ steps.pr.outputs.number }}"
+          echo "## Auto-Merge Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Item | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|------|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Branch | \`$BRANCH\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| PR | #$PR_NUMBER |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| CI Gate | Passed |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Action | Auto-merge + branch delete |" >> "$GITHUB_STEP_SUMMARY"
