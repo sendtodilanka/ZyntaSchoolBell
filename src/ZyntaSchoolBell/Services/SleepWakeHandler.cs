@@ -6,7 +6,7 @@ namespace ZyntaSchoolBell.Services
     public class SleepWakeHandler : IDisposable
     {
         private readonly AlarmEngine _engine;
-        private DateTime _sleepTime;
+        private DateTime _sleepTime = DateTime.Now;
         private bool _disposed;
 
         public event EventHandler SystemResumed;

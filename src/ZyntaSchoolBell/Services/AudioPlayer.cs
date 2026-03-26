@@ -126,18 +126,29 @@ namespace ZyntaSchoolBell.Services
 
         private void OnPlaybackStopped(object sender, StoppedEventArgs e)
         {
+            bool shouldContinue;
             lock (_lock)
             {
                 if (_disposed) return;
 
                 DisposeCurrentPlayback();
+                shouldContinue = true;
 
                 if (e.Exception != null)
                 {
                     Logger.Error("Playback stopped with error", e.Exception);
-                    PlaybackError?.Invoke(this, $"Audio device error: {e.Exception.Message}");
                 }
+            }
 
+            // Raise error event outside lock
+            if (e.Exception != null)
+            {
+                PlaybackError?.Invoke(this, $"Audio device error: {e.Exception.Message}");
+            }
+
+            // Continue chain outside lock to prevent deadlock if subscribers call Play/Cancel
+            if (shouldContinue)
+            {
                 PlayNext();
             }
         }

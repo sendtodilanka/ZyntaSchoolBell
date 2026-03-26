@@ -19,17 +19,27 @@ namespace ZyntaSchoolBell.Services
         private HashSet<string> _firedTodaySet = new HashSet<string>();
         private DateTime _lastDate;
         private List<AlarmEntry> _alarms = new List<AlarmEntry>();
-        private bool _disposed;
+        private volatile bool _disposed;
+        private volatile bool _isMuted;
+        private string _lastCheckedMinute;
 
         public event EventHandler<AlarmFiredEventArgs> AlarmFired;
         public event EventHandler MidnightReset;
 
-        public bool IsMuted { get; set; }
+        public bool IsMuted
+        {
+            get { return _isMuted; }
+            set { _isMuted = value; }
+        }
 
         public void Start()
         {
-            _lastDate = DateTime.Today;
-            MarkPastAlarmsAsFired();
+            lock (_lock)
+            {
+                _lastDate = DateTime.Today;
+                _lastCheckedMinute = DateTime.Now.ToString("HH:mm");
+                MarkPastAlarmsAsFired();
+            }
             _timer = new Timer(OnTick, null, 0, 1000);
             Logger.Info("AlarmEngine started");
         }
@@ -38,7 +48,17 @@ namespace ZyntaSchoolBell.Services
         {
             lock (_lock)
             {
-                _alarms = alarms ?? new List<AlarmEntry>();
+                // Defensive copy to prevent cross-thread mutation from UI
+                _alarms = (alarms ?? new List<AlarmEntry>())
+                    .Select(a => new AlarmEntry
+                    {
+                        Id = a.Id,
+                        Time = a.Time,
+                        Label = a.Label,
+                        AudioKey = a.AudioKey,
+                        Enabled = a.Enabled
+                    })
+                    .ToList();
                 _firedTodaySet.Clear();
                 MarkPastAlarmsAsFired();
                 Logger.Info($"Alarms updated: {_alarms.Count} alarm(s) loaded");
@@ -63,50 +83,18 @@ namespace ZyntaSchoolBell.Services
         {
             lock (_lock)
             {
-                string sleepStr = sleepTime.ToString("HH:mm");
-                string wakeStr = wakeTime.ToString("HH:mm");
-
-                var toRemove = _alarms
-                    .Where(a => a.Enabled
-                        && string.Compare(a.Time, sleepStr, StringComparison.Ordinal) >= 0
-                        && string.Compare(a.Time, wakeStr, StringComparison.Ordinal) <= 0
-                        && _firedTodaySet.Contains(a.Id))
-                    .Select(a => a.Id)
-                    .ToList();
-
-                // Actually we do NOT want to remove them — missed alarms should stay fired
-                // so they don't re-fire. The spec says "do NOT fire any missed alarms".
-                // So this method is intentionally a no-op for the firedTodaySet.
-                Logger.Info($"Wake detected. {toRemove.Count} alarm(s) were in sleep window (kept as fired).");
-            }
-        }
-
-        public void ReEvaluateFiredSet()
-        {
-            lock (_lock)
-            {
-                // On clock change, re-check: keep only alarms whose time is still past
-                string now = DateTime.Now.ToString("HH:mm");
-                var toRemove = new List<string>();
-
-                foreach (var alarm in _alarms)
+                // On wake, re-evaluate: if the clock rolled past midnight during sleep,
+                // do a midnight reset. Otherwise, missed alarms stay fired (spec: don't re-fire).
+                if (sleepTime.Date != wakeTime.Date)
                 {
-                    if (_firedTodaySet.Contains(alarm.Id)
-                        && string.Compare(alarm.Time, now, StringComparison.Ordinal) > 0)
-                    {
-                        // Alarm time is now in the future — it hasn't actually fired yet
-                        toRemove.Add(alarm.Id);
-                    }
+                    _firedTodaySet.Clear();
+                    _lastDate = wakeTime.Date;
+                    MarkPastAlarmsAsFired();
+                    Logger.Info("Cross-midnight wake: reset fired set for new day");
                 }
-
-                foreach (string id in toRemove)
+                else
                 {
-                    _firedTodaySet.Remove(id);
-                }
-
-                if (toRemove.Count > 0)
-                {
-                    Logger.Info($"Clock change detected: {toRemove.Count} alarm(s) moved back to pending");
+                    Logger.Info($"Wake detected. Missed alarms kept as fired.");
                 }
             }
         }
@@ -131,14 +119,22 @@ namespace ZyntaSchoolBell.Services
                     Logger.Info("Midnight reset: cleared fired alarms");
                 }
 
-                if (IsMuted) return;
+                if (_isMuted)
+                {
+                    _lastCheckedMinute = now.ToString("HH:mm");
+                    return;
+                }
 
                 string currentTime = now.ToString("HH:mm");
 
+                // Use <= comparison with fired-set guard instead of exact equality.
+                // This ensures alarms are never missed if the timer tick is delayed
+                // (e.g., system load, GC pause, thread starvation).
+                // The _firedTodaySet prevents any alarm from firing more than once.
                 foreach (var alarm in _alarms)
                 {
                     if (alarm.Enabled
-                        && alarm.Time == currentTime
+                        && string.Compare(alarm.Time, currentTime, StringComparison.Ordinal) <= 0
                         && !_firedTodaySet.Contains(alarm.Id))
                     {
                         _firedTodaySet.Add(alarm.Id);
@@ -146,6 +142,8 @@ namespace ZyntaSchoolBell.Services
                         alarmsToFire.Add(alarm);
                     }
                 }
+
+                _lastCheckedMinute = currentTime;
             }
 
             // Raise events OUTSIDE the lock to prevent deadlock with Control.Invoke()
@@ -170,6 +168,7 @@ namespace ZyntaSchoolBell.Services
 
         private void MarkPastAlarmsAsFired()
         {
+            // Must be called while holding _lock
             string now = DateTime.Now.ToString("HH:mm");
             foreach (var alarm in _alarms)
             {
