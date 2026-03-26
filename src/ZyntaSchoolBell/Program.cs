@@ -1,6 +1,8 @@
 using System;
 using System.Threading;
 using System.Windows.Forms;
+using ZyntaSchoolBell.Services;
+using ZyntaSchoolBell.UI;
 
 namespace ZyntaSchoolBell
 {
@@ -23,7 +25,10 @@ namespace ZyntaSchoolBell
 
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
-                // Application.Run(new MainForm()); // Uncomment in Phase 3
+
+                Logger.Info("ZyntaSchoolBell starting");
+                Application.Run(new MainForm());
+                Logger.Info("ZyntaSchoolBell exiting");
             }
         }
     }
