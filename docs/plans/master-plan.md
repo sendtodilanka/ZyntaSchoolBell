@@ -53,7 +53,7 @@ ZyntaSchoolBell/
 │           └── tray_icon.ico
 ├── audio/                          (Git LFS tracked)
 │   ├── opening_bell/
-│   ├── period_start/
+│   ├── period_1/ through period_8/  (individual period announcements)
 │   ├── interval/
 │   ├── lunch_break/
 │   ├── afternoon_bell/
@@ -272,7 +272,7 @@ public class AppSettings
 **AudioPlayer.cs** — NAudio sequential playback
 - Implements `IAudioPlayer` and `IDisposable`
 - Uses `WaveOutEvent` (compatible with Windows 7+, no UI thread dependency)
-- Sequential chain: si.mp3 → ta.mp3 → en.mp3 via `PlaybackStopped` event
+- Sequential chain: si.mp3 → en.mp3 → ta.mp3 via `PlaybackStopped` event (Sinhala first, then English, then Tamil)
 - `CancelCurrent()` method to stop playback (for overlapping alarm edge case)
 - `SetVolume(int percent)` maps 0-100 to 0.0-1.0 float
 - Missing file: log error, skip to next language, continue chain
@@ -332,15 +332,20 @@ Simple file logger — no external dependencies:
 ### `tools/generate_audio.py`
 
 Python script using `edge-tts`:
-- Iterates all 8 audio keys x 3 languages (24 files total)
+- Generates audio for 15 audio keys x 3 languages (45 files total)
+- Audio keys: `opening_bell`, `period_1` through `period_8`, `interval`, `lunch_break`, `afternoon_bell`, `closing_bell`, `warning_bell`, `assembly`
+- Each period has unique ordinal announcements:
+  - Sinhala: පළමු/දෙවන/තෙවන/සිව්වන/පස්වන/හයවන/හත්වන/අටවන කාලච්ඡේදය ආරම්භ වී ඇත.
+  - English: The first/second/.../eighth period has begun.
+  - Tamil: முதல்/இரண்டாம்/.../எட்டாம் பாடவேளை தொடங்கியது.
 - Voice mapping:
   - Sinhala: `si-LK-SameeraNeural` (primary), `si-LK-ThiliniNeural` (fallback)
   - Tamil: `ta-LK-KumarNeural` (primary), `ta-IN-PallaviNeural` (fallback)
   - English: `en-US-AriaNeural`
 - Output: `audio/{audioKey}/{lang}.mp3`
+- Generation order per key: si → en → ta (matches playback order)
 - Progress reporting per file
 - Error handling per file (don't stop batch on single failure)
-- Includes all announcement text from the spec's audio table
 
 ### Audio Files (Git LFS)
 Configure `.gitattributes`:
@@ -349,9 +354,9 @@ audio/**/*.mp3 filter=lfs diff=lfs merge=lfs -text
 ```
 
 ### Verification
-- Run script, verify 24 MP3 files generated
+- Run script, verify 45 MP3 files generated (15 keys x 3 languages)
 - Each file plays correctly and has audible speech
-- Test AudioPlayer service plays the chain (si → ta → en) without gaps
+- Test AudioPlayer service plays the chain (si → en → ta) without gaps
 - Commit: `"Phase 2: audio generation script and MP3 files"`
 
 ---
@@ -378,7 +383,7 @@ audio/**/*.mp3 filter=lfs diff=lfs merge=lfs -text
 - Modal dialog, owner = MainForm
 - Controls: DateTimePicker (time only, HH:mm), TextBox (label), ComboBox (audio key with friendly names), [Test Audio], [Save], [Cancel]
 - On save: check duplicate time in profile → "Replace existing alarm at HH:MM?" confirmation
-- Audio key dropdown items: Opening Bell, Period Start, Interval, Lunch Break, Afternoon Bell, Closing Bell, Warning Bell, Assembly
+- Audio key dropdown items: Opening Bell, Period 1-8, Interval, Lunch Break, Afternoon Bell, Closing Bell, Warning Bell, Assembly
 
 ### TrayManager (`src/ZyntaSchoolBell/UI/TrayManager.cs`)
 
