@@ -37,28 +37,16 @@
     <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Windows.Forms" />
-    <Reference Include="System.Xml" />
-    <Reference Include="System.Xml.Linq" />
     <Reference Include="Microsoft.CSharp" />
-    <Reference Include="NAudio, Version=2.2.1.0, Culture=neutral, PublicKeyToken=e824a1a85ad18f20">
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+    <Reference Include="NAudio, Version=2.2.1.0, Culture=neutral, PublicKeyToken=null">
       <HintPath>..\..\packages\NAudio.2.2.1\lib\net472\NAudio.dll</HintPath>
     </Reference>
-    <Reference Include="NAudio.Asio, Version=2.2.1.0, Culture=neutral, PublicKeyToken=e824a1a85ad18f20">
-      <HintPath>..\..\packages\NAudio.Asio.2.2.1\lib\net472\NAudio.Asio.dll</HintPath>
+    <Reference Include="NAudio.Core, Version=2.2.1.0, Culture=neutral, PublicKeyToken=null">
+      <HintPath>..\..\packages\NAudio.Core.2.2.1\lib\netstandard2.0\NAudio.Core.dll</HintPath>
     </Reference>
-    <Reference Include="NAudio.Core, Version=2.2.1.0, Culture=neutral, PublicKeyToken=e824a1a85ad18f20">
-      <HintPath>..\..\packages\NAudio.Core.2.2.1\lib\net472\NAudio.Core.dll</HintPath>
-    </Reference>
-    <Reference Include="NAudio.Midi, Version=2.2.1.0, Culture=neutral, PublicKeyToken=e824a1a85ad18f20">
-      <HintPath>..\..\packages\NAudio.Midi.2.2.1\lib\net472\NAudio.Midi.dll</HintPath>
-    </Reference>
-    <Reference Include="NAudio.Wasapi, Version=2.2.1.0, Culture=neutral, PublicKeyToken=e824a1a85ad18f20">
-      <HintPath>..\..\packages\NAudio.Wasapi.2.2.1\lib\net472\NAudio.Wasapi.dll</HintPath>
-    </Reference>
-    <Reference Include="NAudio.WinForms, Version=2.2.1.0, Culture=neutral, PublicKeyToken=e824a1a85ad18f20">
-      <HintPath>..\..\packages\NAudio.WinForms.2.2.1\lib\net472\NAudio.WinForms.dll</HintPath>
-    </Reference>
-    <Reference Include="NAudio.WinMM, Version=2.2.1.0, Culture=neutral, PublicKeyToken=e824a1a85ad18f20">
+    <Reference Include="NAudio.WinMM, Version=2.2.1.0, Culture=neutral, PublicKeyToken=null">
       <HintPath>..\..\packages\NAudio.WinMM.2.2.1\lib\net472\NAudio.WinMM.dll</HintPath>
     </Reference>
     <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed">
@@ -67,39 +55,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
-    <Compile Include="Models\AlarmEntry.cs" />
-    <Compile Include="Models\Profile.cs" />
-    <Compile Include="Models\AppSettings.cs" />
-    <Compile Include="Services\ProfileService.cs" />
-    <Compile Include="Services\AlarmEngine.cs" />
-    <Compile Include="Services\AudioPlayer.cs" />
-    <Compile Include="Services\SleepWakeHandler.cs" />
-    <Compile Include="Services\Logger.cs" />
-    <Compile Include="UI\MainForm.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="UI\MainForm.Designer.cs">
-      <DependentUpon>MainForm.cs</DependentUpon>
-    </Compile>
-    <Compile Include="UI\AddEditAlarmDialog.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="UI\AddEditAlarmDialog.Designer.cs">
-      <DependentUpon>AddEditAlarmDialog.cs</DependentUpon>
-    </Compile>
-    <Compile Include="UI\TrayManager.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <EmbeddedResource Include="UI\MainForm.resx">
-      <DependentUpon>MainForm.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="UI\AddEditAlarmDialog.resx">
-      <DependentUpon>AddEditAlarmDialog.cs</DependentUpon>
-    </EmbeddedResource>
-  </ItemGroup>
-  <ItemGroup>
-    <Content Include="Resources\tray_icon.ico" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

@@ -2,7 +2,7 @@ name: Build & Package
 
 on:
   push:
-    branches: [main, develop, 'claude/**']
+    branches: [main, develop]
     tags: ['v*']
   pull_request:
     branches: [main]
@@ -11,8 +11,7 @@ jobs:
   build:
     runs-on: windows-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           lfs: true
 
@@ -23,50 +22,56 @@ jobs:
         uses: NuGet/setup-nuget@v2
 
       - name: Restore NuGet packages
-        run: nuget restore src\ZyntaSchoolBell\ZyntaSchoolBell.csproj -PackagesDirectory packages
+        run: nuget restore ZyntaSchoolBell.sln
 
       - name: Build (Release)
-        run: msbuild src\ZyntaSchoolBell\ZyntaSchoolBell.csproj /p:Configuration=Release /p:OutputPath=..\..\build\Release
+        run: msbuild ZyntaSchoolBell.sln /p:Configuration=Release
 
       - name: Install Inno Setup
         run: choco install innosetup --yes --no-progress
 
       - name: Compile Installer
-        run: |
-          $env:PATH += ";${env:ProgramFiles(x86)}\Inno Setup 6"
-          iscc installer\ZyntaSchoolBell.iss
-        shell: pwsh
+        run: iscc installer/ZyntaSchoolBell.iss
+        shell: cmd
 
       - name: Upload setup.exe artifact
         uses: actions/upload-artifact@v4
         with:
           name: ZyntaSchoolBell-Setup
-          path: installer\Output\ZyntaSchoolBell-Setup.exe
-          if-no-files-found: error
-
-      - name: Upload build output
-        uses: actions/upload-artifact@v4
-        with:
-          name: ZyntaSchoolBell-Build
-          path: build\Release\
-          if-no-files-found: warn
+          path: installer/Output/ZyntaSchoolBell-Setup.exe
 
   release:
     needs: build
     if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     permissions:
       contents: write
     steps:
-      - name: Download setup.exe artifact
-        uses: actions/download-artifact@v4
+      - uses: actions/checkout@v4
         with:
-          name: ZyntaSchoolBell-Setup
+          lfs: true
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Setup NuGet
+        uses: NuGet/setup-nuget@v2
+
+      - name: Restore NuGet packages
+        run: nuget restore ZyntaSchoolBell.sln
+
+      - name: Build (Release)
+        run: msbuild ZyntaSchoolBell.sln /p:Configuration=Release
+
+      - name: Install Inno Setup
+        run: choco install innosetup --yes --no-progress
+
+      - name: Compile Installer
+        run: iscc installer/ZyntaSchoolBell.iss
+        shell: cmd
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: ZyntaSchoolBell-Setup.exe
+          files: installer/Output/ZyntaSchoolBell-Setup.exe
           generate_release_notes: true
-          draft: false
-          prerelease: false

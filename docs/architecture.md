@@ -2,67 +2,94 @@
 
 ## System Overview
 
-ZyntaSchoolBell is a Windows desktop application that plays multilingual audio announcements (Sinhala, Tamil, English) at scheduled times for school periods. It runs as a system tray application on Windows 7 through Windows 11.
-
-## Component Architecture
-
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    Program.cs                            │
-│              (Entry point, single-instance Mutex)        │
-└──────────────────┬──────────────────────────────────────┘
-                   │
-┌──────────────────▼──────────────────────────────────────┐
-│                    MainForm (UI)                         │
-│  ┌──────────────┐ ┌────────────────┐ ┌───────────────┐  │
-│  │ Profile       │ │ Alarm Grid     │ │ TrayManager   │  │
-│  │ Selector      │ │ (DataGridView) │ │ (NotifyIcon)  │  │
-│  └──────────────┘ └────────────────┘ └───────────────┘  │
-│  ┌──────────────┐ ┌────────────────┐                    │
-│  │ Volume Ctrl   │ │ Status Bar     │                    │
-│  └──────────────┘ └────────────────┘                    │
-└──────────────────┬──────────────────────────────────────┘
-                   │ events
-┌──────────────────▼──────────────────────────────────────┐
-│                    Services Layer                        │
-│  ┌──────────────┐ ┌────────────────┐ ┌───────────────┐  │
-│  │ProfileService│ │  AlarmEngine   │ │  AudioPlayer  │  │
-│  │ (JSON CRUD)  │ │ (Timer 1s tick)│ │ (NAudio chain)│  │
-│  └──────────────┘ └────────────────┘ └───────────────┘  │
-│  ┌──────────────┐ ┌────────────────┐                    │
-│  │SleepWakeHndlr│ │    Logger      │                    │
-│  └──────────────┘ └────────────────┘                    │
-└─────────────────────────────────────────────────────────┘
-                   │
-┌──────────────────▼──────────────────────────────────────┐
-│                    Data Layer                            │
-│  %APPDATA%/ZyntaSchoolBell/                              │
-│    ├── profiles/*.json                                   │
-│    ├── settings.json                                     │
-│    └── logs/app.log                                      │
-│  %LOCALAPPDATA%/ZyntaSchoolBell/                         │
-│    └── audio/{audioKey}/{si|ta|en}.mp3                   │
-└─────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────┐
+│                   Program.cs                     │
+│            (Entry point + Mutex)                  │
+└──────────────────────┬──────────────────────────┘
+                       │
+┌──────────────────────▼──────────────────────────┐
+│                   MainForm                       │
+│  ┌─────────┐ ┌──────────┐ ┌──────────────────┐  │
+│  │ Profile  │ │  Alarm   │ │   Volume/Mute    │  │
+│  │ Selector │ │   Grid   │ │    Controls      │  │
+│  └─────────┘ └──────────┘ └──────────────────┘  │
+└──────────────────────┬──────────────────────────┘
+                       │ events
+┌──────────────────────▼──────────────────────────┐
+│                 Service Layer                    │
+│  ┌──────────────┐ ┌────────────┐ ┌───────────┐  │
+│  │ AlarmEngine   │ │AudioPlayer │ │ Profile   │  │
+│  │ (Timer+Events)│ │ (NAudio)   │ │ Service   │  │
+│  └──────┬───────┘ └──────┬─────┘ └─────┬─────┘  │
+│         │  AlarmFired     │ Play()      │ JSON   │
+│         │  event          │             │ I/O    │
+│  ┌──────▼───────┐        │             │        │
+│  │SleepWake     │        │             │        │
+│  │Handler       │        │             │        │
+│  └──────────────┘        │             │        │
+└──────────────────────────┼─────────────┼────────┘
+                           │             │
+              ┌────────────▼─┐    ┌──────▼────────┐
+              │ audio/*.mp3  │    │ %APPDATA%/    │
+              │ (LOCALAPPDATA)│    │ profiles/     │
+              └──────────────┘    │ settings.json │
+                                  └───────────────┘
 ```
 
-## Key Design Decisions
+## Component Design
 
-1. **Event-driven AlarmEngine**: Raises `AlarmFired` events rather than directly calling AudioPlayer, enabling loose coupling and testability.
-2. **WaveOutEvent backend**: NAudio's most compatible backend, works on Windows 7+ without UI thread dependency.
-3. **Sequential audio chain**: si.mp3 → ta.mp3 → en.mp3 chained via `PlaybackStopped` events (no Thread.Sleep).
-4. **Per-user installation**: All files in LOCALAPPDATA/APPDATA, no admin rights required.
-5. **Atomic file writes**: Profile/settings saved to .tmp then moved, preventing corruption on crash.
-6. **Single-instance Mutex**: Prevents duplicate launches that would cause conflicting timers.
+### AlarmEngine
+- `System.Threading.Timer` fires every 1000ms
+- Compares `DateTime.Now.ToString("HH:mm")` against enabled alarms
+- Maintains `HashSet<string> firedTodaySet` (thread-safe with `lock`)
+- Raises `AlarmFired` event — does NOT directly call AudioPlayer
+- At midnight: clears firedTodaySet, raises MidnightReset event
+- On startup: marks past alarms as already fired
 
-## Technology Stack
+### AudioPlayer
+- Implements `IAudioPlayer` and `IDisposable`
+- Uses `WaveOutEvent` for Windows 7+ compatibility
+- Plays sequential chain: si.mp3 → ta.mp3 → en.mp3
+- Chains via `PlaybackStopped` event (no Thread.Sleep)
+- `CancelCurrent()` stops playback for overlapping alarms
+- Missing files: logs error, skips language, continues chain
 
-| Component | Technology |
-|-----------|------------|
-| Language | C# (.NET Framework 4.8) |
-| UI | WinForms |
-| Audio | NAudio 2.2.1 |
-| JSON | Newtonsoft.Json 13.x |
-| Scheduling | System.Threading.Timer |
-| Installer | Inno Setup 6 |
-| Audio Generation | Python edge-tts |
-| CI/CD | GitHub Actions (MSBuild + Inno Setup) |
+### ProfileService
+- CRUD operations for Profile and AppSettings JSON files
+- Atomic writes: write to .tmp, then File.Move
+- UTF-8 without BOM for Sinhala/Tamil compatibility
+- Auto-creates directories on first run
+
+### SleepWakeHandler
+- Hooks `SystemEvents.PowerModeChanged`
+- On resume: logs wake, does NOT fire missed alarms
+- Clears sleep-window alarms from firedTodaySet
+
+### TrayManager
+- NotifyIcon with bell icon
+- Tooltip shows next alarm time or "Muted Today"
+- Context menu: schedule info, mute toggle, open/exit
+
+## Threading Model
+
+- Timer callbacks run on ThreadPool threads
+- UI updates marshalled via `Control.Invoke()`
+- `firedTodaySet` protected by `lock` object
+- NAudio playback on background thread (WaveOutEvent)
+
+## Data Flow
+
+1. Timer tick → check alarms → raise AlarmFired event
+2. MainForm handles event → calls AudioPlayer.Play(audioKey)
+3. AudioPlayer chains si→ta→en via PlaybackStopped
+4. Profile changes → ProfileService.Save() → AlarmEngine.Reload()
+
+## File Paths
+
+| Path | Content |
+|------|---------|
+| `{exe dir}/audio/{key}/{lang}.mp3` | Audio files |
+| `%APPDATA%/ZyntaSchoolBell/profiles/{id}.json` | Schedule profiles |
+| `%APPDATA%/ZyntaSchoolBell/settings.json` | App settings |
+| `%APPDATA%/ZyntaSchoolBell/logs/app.log` | Application log |

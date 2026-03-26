@@ -23,7 +23,7 @@ namespace ZyntaSchoolBell
 
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
-                // Application.Run(new UI.MainForm());
+                // Application.Run(new MainForm()); // Uncomment in Phase 3
             }
         }
     }

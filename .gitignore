@@ -11,42 +11,49 @@ bld/
 [Ll]og/
 [Ll]ogs/
 
-# Visual Studio files
+# Visual Studio cache/options
 .vs/
 *.suo
 *.user
 *.userosscache
 *.sln.docstates
-*.rsuser
 
 # Build results
-[Dd]ebugPublic/
-[Rr]eleases/
+[Dd]ebug/
+[Rr]elease/
 build/
 
 # NuGet
-**/[Pp]ackages/*
-!**/[Pp]ackages/build/
+packages/
 *.nupkg
-**/packages/
-!**/packages.config
+*.snupkg
+project.lock.json
+project.fragment.lock.json
+artifacts/
 
-# Windows
-Thumbs.db
-ehthumbs.db
-Desktop.ini
-$RECYCLE.BIN/
-
-# Rider
-.idea/
-*.sln.iml
+# MSBuild
+*.log
+msbuild.wrn
+msbuild.err
 
 # Installer output
 installer/Output/
 
+# OS files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
+
+# IDE
+*.swp
+*.swo
+*~
+.idea/
+*.iml
+
 # Python
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
 venv/
-.venv/
+.env/
