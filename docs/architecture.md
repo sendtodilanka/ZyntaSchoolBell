@@ -50,7 +50,7 @@
 ### AudioPlayer
 - Implements `IAudioPlayer` and `IDisposable`
 - Uses `WaveOutEvent` for Windows 7+ compatibility
-- Plays sequential chain: si.mp3 → ta.mp3 → en.mp3
+- Plays sequential chain: si.mp3 → en.mp3 → ta.mp3 (Sinhala first, then English, then Tamil)
 - Chains via `PlaybackStopped` event (no Thread.Sleep)
 - `CancelCurrent()` stops playback for overlapping alarms
 - Missing files: logs error, skips language, continues chain
@@ -82,7 +82,7 @@
 
 1. Timer tick → check alarms → raise AlarmFired event
 2. MainForm handles event → calls AudioPlayer.Play(audioKey)
-3. AudioPlayer chains si→ta→en via PlaybackStopped
+3. AudioPlayer chains si→en→ta via PlaybackStopped
 4. Profile changes → ProfileService.Save() → AlarmEngine.Reload()
 
 ## File Paths

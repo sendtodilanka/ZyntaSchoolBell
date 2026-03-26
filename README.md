@@ -4,7 +4,7 @@ A lightweight Windows desktop application that plays pre-recorded multilingual a
 
 ## Features
 
-- **Multilingual announcements**: Plays Sinhala → Tamil → English audio sequences
+- **Multilingual announcements**: Plays Sinhala → English → Tamil audio sequences
 - **Multiple schedule profiles**: Regular Day, Exam Day, Half Day, Saturday School, Special Day
 - **System tray integration**: Runs quietly in the background
 - **No admin rights required**: Per-user installation
@@ -53,10 +53,16 @@ A lightweight Windows desktop application that plays pre-recorded multilingual a
 
 ### Audio Generation
 
+Generate all 45 MP3 files (15 audio keys × 3 languages):
+
 ```
 pip install edge-tts
 python tools/generate_audio.py
 ```
+
+Audio keys: `opening_bell`, `period_1` through `period_8`, `interval`, `lunch_break`, `afternoon_bell`, `closing_bell`, `warning_bell`, `assembly`
+
+Each alarm plays: **Sinhala → English → Tamil** (sequentially via NAudio).
 
 ## File Paths
 
@@ -76,7 +82,7 @@ src/ZyntaSchoolBell/
 ├── UI/              WinForms (MainForm, AddEditAlarmDialog, TrayManager)
 └── Resources/       Icons and embedded resources
 
-audio/               Multilingual MP3 announcements (8 categories × 3 languages)
+audio/               Multilingual MP3 announcements (15 categories × 3 languages)
 installer/           Inno Setup script + default profiles
 tools/               Audio generation script
 docs/                Architecture docs and plans
