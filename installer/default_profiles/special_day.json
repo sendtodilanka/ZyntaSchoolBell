@@ -3,33 +3,9 @@
   "name": "Special Day",
   "version": 1,
   "alarms": [
-    {
-      "id": "sp-001",
-      "time": "07:30",
-      "label": "Opening Bell",
-      "audioKey": "opening_bell",
-      "enabled": true
-    },
-    {
-      "id": "sp-002",
-      "time": "07:35",
-      "label": "Assembly",
-      "audioKey": "assembly",
-      "enabled": true
-    },
-    {
-      "id": "sp-003",
-      "time": "12:00",
-      "label": "Lunch Break",
-      "audioKey": "lunch_break",
-      "enabled": true
-    },
-    {
-      "id": "sp-004",
-      "time": "16:00",
-      "label": "Closing Bell",
-      "audioKey": "closing_bell",
-      "enabled": true
-    }
+    { "id": "sp-01", "time": "07:30", "label": "Opening Bell", "audioKey": "opening_bell", "enabled": true },
+    { "id": "sp-02", "time": "07:35", "label": "Assembly", "audioKey": "assembly", "enabled": true },
+    { "id": "sp-03", "time": "12:00", "label": "Lunch Break", "audioKey": "lunch_break", "enabled": true },
+    { "id": "sp-04", "time": "16:00", "label": "Closing Bell", "audioKey": "closing_bell", "enabled": true }
   ]
 }

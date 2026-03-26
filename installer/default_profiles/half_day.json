@@ -3,54 +3,12 @@
   "name": "Half Day",
   "version": 1,
   "alarms": [
-    {
-      "id": "hd-001",
-      "time": "07:30",
-      "label": "Opening Bell",
-      "audioKey": "opening_bell",
-      "enabled": true
-    },
-    {
-      "id": "hd-002",
-      "time": "07:35",
-      "label": "Assembly",
-      "audioKey": "assembly",
-      "enabled": true
-    },
-    {
-      "id": "hd-003",
-      "time": "08:00",
-      "label": "Period Start",
-      "audioKey": "period_start",
-      "enabled": true
-    },
-    {
-      "id": "hd-004",
-      "time": "10:00",
-      "label": "Interval",
-      "audioKey": "interval",
-      "enabled": true
-    },
-    {
-      "id": "hd-005",
-      "time": "10:15",
-      "label": "Warning Bell",
-      "audioKey": "warning_bell",
-      "enabled": true
-    },
-    {
-      "id": "hd-006",
-      "time": "10:20",
-      "label": "Afternoon Bell",
-      "audioKey": "afternoon_bell",
-      "enabled": true
-    },
-    {
-      "id": "hd-007",
-      "time": "12:30",
-      "label": "Closing Bell",
-      "audioKey": "closing_bell",
-      "enabled": true
-    }
+    { "id": "hd-01", "time": "07:30", "label": "Opening Bell", "audioKey": "opening_bell", "enabled": true },
+    { "id": "hd-02", "time": "07:35", "label": "Assembly", "audioKey": "assembly", "enabled": true },
+    { "id": "hd-03", "time": "08:00", "label": "Period Start", "audioKey": "period_start", "enabled": true },
+    { "id": "hd-04", "time": "10:00", "label": "Interval", "audioKey": "interval", "enabled": true },
+    { "id": "hd-05", "time": "10:15", "label": "Warning Bell", "audioKey": "warning_bell", "enabled": true },
+    { "id": "hd-06", "time": "10:20", "label": "Afternoon Bell", "audioKey": "afternoon_bell", "enabled": true },
+    { "id": "hd-07", "time": "12:30", "label": "Closing Bell", "audioKey": "closing_bell", "enabled": true }
   ]
 }

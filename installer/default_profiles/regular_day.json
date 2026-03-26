@@ -3,68 +3,14 @@
   "name": "Regular Day",
   "version": 1,
   "alarms": [
-    {
-      "id": "rd-001",
-      "time": "07:30",
-      "label": "Opening Bell",
-      "audioKey": "opening_bell",
-      "enabled": true
-    },
-    {
-      "id": "rd-002",
-      "time": "07:35",
-      "label": "Assembly",
-      "audioKey": "assembly",
-      "enabled": true
-    },
-    {
-      "id": "rd-003",
-      "time": "08:00",
-      "label": "Period Start",
-      "audioKey": "period_start",
-      "enabled": true
-    },
-    {
-      "id": "rd-004",
-      "time": "10:00",
-      "label": "Interval",
-      "audioKey": "interval",
-      "enabled": true
-    },
-    {
-      "id": "rd-005",
-      "time": "10:20",
-      "label": "Warning Bell",
-      "audioKey": "warning_bell",
-      "enabled": true
-    },
-    {
-      "id": "rd-006",
-      "time": "10:30",
-      "label": "Afternoon Bell",
-      "audioKey": "afternoon_bell",
-      "enabled": true
-    },
-    {
-      "id": "rd-007",
-      "time": "12:30",
-      "label": "Lunch Break",
-      "audioKey": "lunch_break",
-      "enabled": true
-    },
-    {
-      "id": "rd-008",
-      "time": "13:00",
-      "label": "Afternoon Bell",
-      "audioKey": "afternoon_bell",
-      "enabled": true
-    },
-    {
-      "id": "rd-009",
-      "time": "15:30",
-      "label": "Closing Bell",
-      "audioKey": "closing_bell",
-      "enabled": true
-    }
+    { "id": "rd-01", "time": "07:30", "label": "Opening Bell", "audioKey": "opening_bell", "enabled": true },
+    { "id": "rd-02", "time": "07:35", "label": "Assembly", "audioKey": "assembly", "enabled": true },
+    { "id": "rd-03", "time": "08:00", "label": "Period Start", "audioKey": "period_start", "enabled": true },
+    { "id": "rd-04", "time": "10:00", "label": "Interval", "audioKey": "interval", "enabled": true },
+    { "id": "rd-05", "time": "10:20", "label": "Warning Bell", "audioKey": "warning_bell", "enabled": true },
+    { "id": "rd-06", "time": "10:30", "label": "Afternoon Bell", "audioKey": "afternoon_bell", "enabled": true },
+    { "id": "rd-07", "time": "12:30", "label": "Lunch Break", "audioKey": "lunch_break", "enabled": true },
+    { "id": "rd-08", "time": "13:00", "label": "Afternoon Bell", "audioKey": "afternoon_bell", "enabled": true },
+    { "id": "rd-09", "time": "15:30", "label": "Closing Bell", "audioKey": "closing_bell", "enabled": true }
   ]
 }
