@@ -1,0 +1,52 @@
+## Visual Studio / .NET
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio files
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.rsuser
+
+# Build results
+[Dd]ebugPublic/
+[Rr]eleases/
+build/
+
+# NuGet
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+*.nupkg
+**/packages/
+!**/packages.config
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Rider
+.idea/
+*.sln.iml
+
+# Installer output
+installer/Output/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
