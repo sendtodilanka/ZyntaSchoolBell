@@ -119,15 +119,15 @@ namespace ZyntaSchoolBell.UI
             _alarmGrid.Columns.Add("Label", "Bell Name");
             _alarmGrid.Columns.Add("AudioKey", "Audio");
 
-            var testCol = new DataGridViewButtonColumn { Name = "Test", HeaderText = "", Text = "Test", UseColumnDefaultCellStyle = true, Width = 50 };
+            var testCol = new DataGridViewButtonColumn { Name = "Test", HeaderText = "", Text = "Test", UseColumnTextForButtonValue = true, Width = 50 };
             testCol.FlatStyle = FlatStyle.Flat;
             _alarmGrid.Columns.Add(testCol);
 
-            var editCol = new DataGridViewButtonColumn { Name = "Edit", HeaderText = "", Text = "Edit", UseColumnDefaultCellStyle = true, Width = 50 };
+            var editCol = new DataGridViewButtonColumn { Name = "Edit", HeaderText = "", Text = "Edit", UseColumnTextForButtonValue = true, Width = 50 };
             editCol.FlatStyle = FlatStyle.Flat;
             _alarmGrid.Columns.Add(editCol);
 
-            var deleteCol = new DataGridViewButtonColumn { Name = "Delete", HeaderText = "", Text = "Del", UseColumnDefaultCellStyle = true, Width = 50 };
+            var deleteCol = new DataGridViewButtonColumn { Name = "Delete", HeaderText = "", Text = "Del", UseColumnTextForButtonValue = true, Width = 50 };
             deleteCol.FlatStyle = FlatStyle.Flat;
             _alarmGrid.Columns.Add(deleteCol);
 
