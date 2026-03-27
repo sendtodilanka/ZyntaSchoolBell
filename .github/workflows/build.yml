@@ -1,0 +1,40 @@
+name: Release
+
+# Only runs on version tags — creates GitHub Release with installer
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & Publish Release
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Restore NuGet packages
+        run: msbuild ZyntaSchoolBell.sln /t:Restore
+
+      - name: Build (Release)
+        run: msbuild ZyntaSchoolBell.sln /p:Configuration=Release
+
+      - name: Install Inno Setup
+        run: choco install innosetup --yes --no-progress
+
+      - name: Compile Installer
+        run: iscc installer/ZyntaSchoolBell.iss
+        shell: cmd
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: installer/Output/ZyntaSchoolBell-Setup.exe
+          generate_release_notes: true

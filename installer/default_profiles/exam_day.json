@@ -1,0 +1,16 @@
+{
+  "id": "exam_day",
+  "name": "Exam Day",
+  "version": 1,
+  "alarms": [
+    { "id": "ed-01", "time": "07:30", "label": "Opening Bell", "audioKey": "opening_bell", "enabled": true },
+    { "id": "ed-02", "time": "07:35", "label": "Assembly", "audioKey": "assembly", "enabled": true },
+    { "id": "ed-03", "time": "08:00", "label": "Period 1", "audioKey": "period_1", "enabled": true },
+    { "id": "ed-04", "time": "10:30", "label": "Interval", "audioKey": "interval", "enabled": true },
+    { "id": "ed-05", "time": "10:45", "label": "Warning Bell", "audioKey": "warning_bell", "enabled": true },
+    { "id": "ed-06", "time": "11:00", "label": "Period 2", "audioKey": "period_2", "enabled": true },
+    { "id": "ed-07", "time": "13:00", "label": "Lunch Break", "audioKey": "lunch_break", "enabled": true },
+    { "id": "ed-08", "time": "13:30", "label": "Period 3", "audioKey": "period_3", "enabled": true },
+    { "id": "ed-09", "time": "15:30", "label": "Closing Bell", "audioKey": "closing_bell", "enabled": true }
+  ]
+}
