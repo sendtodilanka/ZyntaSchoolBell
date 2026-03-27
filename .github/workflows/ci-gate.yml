@@ -29,34 +29,8 @@ jobs:
       - name: Restore NuGet packages
         run: nuget restore ZyntaSchoolBell.sln -PackagesDirectory packages
 
-      - name: Verify NuGet packages
-        run: |
-          Write-Host "CWD: $(Get-Location)"
-          Write-Host ""
-          Write-Host "=== Package DLLs ==="
-          Get-ChildItem -Path packages -Recurse -Filter "*.dll" | ForEach-Object {
-            Write-Host "  $($_.FullName)"
-          }
-          Write-Host ""
-          Write-Host "=== HintPath resolution test ==="
-          $projDir = "src\ZyntaSchoolBell"
-          $hintPaths = @(
-            "..\..\packages\NAudio.2.2.1\lib\net472\NAudio.dll",
-            "..\..\packages\NAudio.WinMM.2.2.1\lib\net472\NAudio.WinMM.dll",
-            "..\..\packages\NAudio.Wasapi.2.2.1\lib\netstandard2.0\NAudio.Wasapi.dll",
-            "..\..\packages\NAudio.Core.2.2.1\lib\netstandard2.0\NAudio.Core.dll"
-          )
-          foreach ($hint in $hintPaths) {
-            $full = Join-Path $projDir $hint
-            $resolved = [System.IO.Path]::GetFullPath($full)
-            $exists = Test-Path $resolved
-            Write-Host "  $hint -> $resolved [exists=$exists]"
-          }
-        shell: pwsh
-
       - name: Build (Release)
-        run: msbuild ZyntaSchoolBell.sln /p:Configuration=Release /v:detailed 2>&1 | Select-String -Pattern "NAudio|ResolveAssembly|Primary reference|HintPath" | Select-Object -First 40
-        shell: pwsh
+        run: msbuild ZyntaSchoolBell.sln /p:Configuration=Release
 
       - name: Build (Debug)
         run: msbuild ZyntaSchoolBell.sln /p:Configuration=Debug
