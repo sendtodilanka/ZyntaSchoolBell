@@ -27,7 +27,22 @@ jobs:
         uses: NuGet/setup-nuget@v2
 
       - name: Restore NuGet packages
-        run: nuget restore ZyntaSchoolBell.sln
+        run: nuget restore ZyntaSchoolBell.sln -PackagesDirectory packages
+
+      - name: Verify NuGet packages
+        run: |
+          Write-Host "Checking packages directory..."
+          Get-ChildItem -Path packages -Recurse -Filter "*.dll" | ForEach-Object {
+            Write-Host "  $($_.FullName)"
+          }
+          $naudioDll = "packages\NAudio.2.2.1\lib\net472\NAudio.dll"
+          if (Test-Path $naudioDll) {
+            Write-Host "NAudio.dll found at expected path"
+          } else {
+            Write-Error "NAudio.dll NOT found at $naudioDll"
+            exit 1
+          }
+        shell: pwsh
 
       - name: Build (Release)
         run: msbuild ZyntaSchoolBell.sln /p:Configuration=Release
@@ -300,7 +315,7 @@ jobs:
 
       - name: Restore & Build
         run: |
-          nuget restore ZyntaSchoolBell.sln
+          nuget restore ZyntaSchoolBell.sln -PackagesDirectory packages
           msbuild ZyntaSchoolBell.sln /p:Configuration=Release
 
       - name: Install Inno Setup

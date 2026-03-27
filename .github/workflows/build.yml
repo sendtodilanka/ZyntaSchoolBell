@@ -24,7 +24,7 @@ jobs:
         uses: NuGet/setup-nuget@v2
 
       - name: Restore NuGet packages
-        run: nuget restore ZyntaSchoolBell.sln
+        run: nuget restore ZyntaSchoolBell.sln -PackagesDirectory packages
 
       - name: Build (Release)
         run: msbuild ZyntaSchoolBell.sln /p:Configuration=Release
