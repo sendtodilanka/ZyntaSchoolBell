@@ -23,11 +23,8 @@ jobs:
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
 
-      - name: Setup NuGet
-        uses: NuGet/setup-nuget@v2
-
       - name: Restore NuGet packages
-        run: nuget restore ZyntaSchoolBell.sln -PackagesDirectory packages
+        run: msbuild ZyntaSchoolBell.sln /t:Restore
 
       - name: Build (Release)
         run: msbuild ZyntaSchoolBell.sln /p:Configuration=Release
@@ -142,18 +139,21 @@ jobs:
 
       - name: Check NuGet package vulnerabilities
         run: |
-          # Parse packages.config for known vulnerable versions
-          [xml]$packages = Get-Content "src/ZyntaSchoolBell/packages.config"
-          $deps = $packages.packages.package | ForEach-Object { "$($_.id) $($_.version)" }
+          # Parse csproj PackageReference elements for dependency info
+          [xml]$csproj = Get-Content "src/ZyntaSchoolBell/ZyntaSchoolBell.csproj"
+          $ns = New-Object System.Xml.XmlNamespaceManager($csproj.NameTable)
+          $ns.AddNamespace("ms", "http://schemas.microsoft.com/developer/msbuild/2003")
+          $refs = $csproj.SelectNodes("//ms:PackageReference", $ns)
           Write-Host "Dependencies:"
-          $deps | ForEach-Object { Write-Host "  $_" }
+          foreach ($ref in $refs) {
+            Write-Host "  $($ref.Include) $($ref.Version)"
+          }
 
           # Check for known vulnerable versions (basic check)
           $vulnerable = @()
-          foreach ($pkg in $packages.packages.package) {
-            # Newtonsoft.Json < 13.0.1 has known vulnerabilities
-            if ($pkg.id -eq "Newtonsoft.Json" -and [version]$pkg.version -lt [version]"13.0.1") {
-              $vulnerable += "$($pkg.id) $($pkg.version) — update to >= 13.0.1"
+          foreach ($ref in $refs) {
+            if ($ref.Include -eq "Newtonsoft.Json" -and [version]$ref.Version -lt [version]"13.0.1") {
+              $vulnerable += "$($ref.Include) $($ref.Version) — update to >= 13.0.1"
             }
           }
           if ($vulnerable.Count -gt 0) {
@@ -295,12 +295,9 @@ jobs:
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
 
-      - name: Setup NuGet
-        uses: NuGet/setup-nuget@v2
-
       - name: Restore & Build
         run: |
-          nuget restore ZyntaSchoolBell.sln -PackagesDirectory packages
+          msbuild ZyntaSchoolBell.sln /t:Restore
           msbuild ZyntaSchoolBell.sln /p:Configuration=Release
 
       - name: Install Inno Setup
