@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.InteropServices;
 using NAudio.CoreAudioApi;
 
 namespace ZyntaSchoolBell.Services
@@ -32,27 +33,24 @@ namespace ZyntaSchoolBell.Services
                         return;
                     }
 
-                    using (device)
+                    var volume = device.AudioEndpointVolume;
+
+                    // Unmute system if muted
+                    if (volume.Mute)
                     {
-                        var volume = device.AudioEndpointVolume;
+                        volume.Mute = false;
+                        Logger.Info("System audio was muted — unmuted for alarm playback");
+                    }
 
-                        // Unmute system if muted
-                        if (volume.Mute)
-                        {
-                            volume.Mute = false;
-                            Logger.Info("System audio was muted — unmuted for alarm playback");
-                        }
+                    // Check and raise volume if below desired level
+                    float currentScalar = volume.MasterVolumeLevelScalar; // 0.0 to 1.0
+                    int currentPercent = (int)(currentScalar * 100f);
+                    float desiredScalar = Math.Max(0f, Math.Min(1f, desiredPercent / 100f));
 
-                        // Check and raise volume if below desired level
-                        float currentScalar = volume.MasterVolumeLevelScalar; // 0.0 to 1.0
-                        int currentPercent = (int)(currentScalar * 100f);
-                        float desiredScalar = Math.Max(0f, Math.Min(1f, desiredPercent / 100f));
-
-                        if (currentScalar < desiredScalar)
-                        {
-                            volume.MasterVolumeLevelScalar = desiredScalar;
-                            Logger.Info($"System volume raised from {currentPercent}% to {desiredPercent}% for alarm");
-                        }
+                    if (currentScalar < desiredScalar)
+                    {
+                        volume.MasterVolumeLevelScalar = desiredScalar;
+                        Logger.Info($"System volume raised from {currentPercent}% to {desiredPercent}% for alarm");
                     }
                 }
             }
