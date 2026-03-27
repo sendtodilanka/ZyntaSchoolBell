@@ -29,10 +29,6 @@ jobs:
       - name: Restore NuGet packages
         run: nuget restore ZyntaSchoolBell.sln -PackagesDirectory packages
 
-      - name: List restored packages
-        run: dir packages\*.dll /s /b
-        shell: cmd
-
       - name: Build (Release)
         run: msbuild ZyntaSchoolBell.sln /p:Configuration=Release
 
