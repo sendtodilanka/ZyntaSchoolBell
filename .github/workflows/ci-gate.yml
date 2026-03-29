@@ -173,7 +173,7 @@ jobs:
 
       - name: Generate audio files
         run: |
-          pip install edge-tts
+          pip install gtts
           python tools/generate_audio.py
 
       - name: Verify audio files
