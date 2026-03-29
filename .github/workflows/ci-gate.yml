@@ -130,9 +130,11 @@ jobs:
             echo "::error::WakeScheduler.cs not found"
             exit 1
           fi
-          grep -q "CreateWaitableTimer" "$FILE" && echo "[PASS] CreateWaitableTimer"
-          grep -qP 'true\);\s*//.*[Ww]ake|fResume.*true' "$FILE" && echo "[PASS] fResume=true"
-          grep -qP 'catch|_supported|failed' "$FILE" && echo "[PASS] Graceful degradation"
+          FAILED=0
+          grep -q "CreateWaitableTimer" "$FILE" && echo "[PASS] CreateWaitableTimer" || { echo "[FAIL] CreateWaitableTimer not found"; FAILED=1; }
+          grep -qP 'true\);\s*//.*[Ww]ake|fResume.*true' "$FILE" && echo "[PASS] fResume=true" || { echo "[FAIL] fResume wake flag not found"; FAILED=1; }
+          grep -qP 'catch|_supported|failed' "$FILE" && echo "[PASS] Graceful degradation" || { echo "[FAIL] Graceful degradation not found"; FAILED=1; }
+          if [ "$FAILED" -eq 1 ]; then exit 1; fi
 
       - name: Verify system volume enforcement
         run: |
