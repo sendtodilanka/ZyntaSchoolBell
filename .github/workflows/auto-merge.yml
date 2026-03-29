@@ -119,34 +119,28 @@ jobs:
             echo "number=${{ steps.create_pr.outputs.pr_number }}" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Enable auto-merge
+      - name: Merge Pull Request
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           PR_NUMBER="${{ steps.pr.outputs.number }}"
-          echo "Enabling auto-merge for PR #$PR_NUMBER..."
+          echo "Merging PR #$PR_NUMBER..."
 
-          # Try to enable auto-merge (requires branch protection rules)
-          gh pr merge "$PR_NUMBER" --auto --squash --delete-branch || {
-            echo "Auto-merge not available (branch protection may not be configured)."
-            echo "Attempting direct merge..."
+          # Wait for GitHub to register the PR as mergeable
+          sleep 10
 
-            # Wait a moment for GitHub to process the PR
-            sleep 5
+          # Direct squash merge — CI already passed on the push event
+          MERGEABLE=$(gh pr view "$PR_NUMBER" --json mergeable --jq '.mergeable')
+          echo "PR mergeable status: $MERGEABLE"
 
-            # Check if PR is mergeable
-            MERGEABLE=$(gh pr view "$PR_NUMBER" --json mergeable --jq '.mergeable')
-            echo "PR mergeable status: $MERGEABLE"
-
-            if [ "$MERGEABLE" == "MERGEABLE" ]; then
-              gh pr merge "$PR_NUMBER" --squash --delete-branch \
-                --subject "$(gh pr view "$PR_NUMBER" --json title --jq '.title')" \
-                --body "Auto-merged after CI Gate passed. PR #$PR_NUMBER"
-              echo "PR #$PR_NUMBER merged and branch deleted."
-            else
-              echo "::warning::PR #$PR_NUMBER is not mergeable yet (status: $MERGEABLE). Manual merge needed."
-            fi
-          }
+          if [ "$MERGEABLE" == "MERGEABLE" ]; then
+            gh pr merge "$PR_NUMBER" --squash --delete-branch \
+              --subject "$(gh pr view "$PR_NUMBER" --json title --jq '.title')" \
+              --body "Auto-merged after CI Gate passed. PR #$PR_NUMBER"
+            echo "PR #$PR_NUMBER merged and branch deleted."
+          else
+            echo "::warning::PR #$PR_NUMBER is not mergeable yet (status: $MERGEABLE). Manual merge needed."
+          fi
 
       - name: Summary
         run: |
