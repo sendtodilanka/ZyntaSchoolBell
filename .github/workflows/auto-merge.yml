@@ -26,6 +26,7 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ github.event.workflow_run.head_branch }}
+          token: ${{ secrets.PAT_TOKEN }}
 
       - name: Get branch info
         id: branch
@@ -150,12 +151,42 @@ jobs:
           echo "::error::PR #$PR_NUMBER is not mergeable after $MAX_RETRIES attempts (status: $MERGEABLE)."
           exit 1
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Generate and commit audio files to main
+        env:
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+        run: |
+          # main branch checkout කරනවා
+          git fetch origin main
+          git checkout main
+          git pull origin main
+
+          # Audio generate කරනවා
+          pip install edge-tts
+          python tools/generate_audio.py
+
+          # Audio files commit කරනවා (වෙනසක් තියෙනවා නම් පමණයි)
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add audio/
+          if git diff --staged --quiet; then
+            echo "Audio files already up to date."
+          else
+            git commit -m "Audio files generate කිරීම (edge-tts)"
+            git push origin main
+            echo "Audio files committed to main."
+          fi
+
       - name: Create version tag
         id: tag
         env:
           GH_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
-          # main branch එකේ latest code fetch කරනවා
+          # main branch එකේ latest code fetch කරනවා (audio commit එකත් ගන්නවා)
           git fetch origin main --tags
 
           # Latest tag එක ගන්නවා (v1.0.0 format)

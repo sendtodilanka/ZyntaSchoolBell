@@ -39,8 +39,6 @@ msbuild.err
 # Installer output
 installer/Output/
 
-# Generated audio files (CI එකේ generate කරනවා)
-audio/**/*.mp3
 
 # OS files
 Thumbs.db
