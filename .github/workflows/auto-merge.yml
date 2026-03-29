@@ -232,7 +232,7 @@ jobs:
       - name: Create version tag
         id: tag
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
           # main branch එකේ latest code fetch කරනවා (audio commit එකත් ගන්නවා)
           git fetch origin main --tags
