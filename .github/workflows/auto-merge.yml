@@ -139,7 +139,8 @@ jobs:
               --body "Auto-merged after CI Gate passed. PR #$PR_NUMBER"
             echo "PR #$PR_NUMBER merged and branch deleted."
           else
-            echo "::warning::PR #$PR_NUMBER is not mergeable yet (status: $MERGEABLE). Manual merge needed."
+            echo "::error::PR #$PR_NUMBER is not mergeable (status: $MERGEABLE). Manual merge needed."
+            exit 1
           fi
 
       - name: Create version tag
