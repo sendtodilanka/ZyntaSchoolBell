@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-ZyntaSchoolBell Audio Generator
+ZyntaSchoolBell Audio Generator v1.0
 
 Generates multilingual audio announcements (Sinhala, Tamil, English)
 for all school bell types using Microsoft Edge TTS.
