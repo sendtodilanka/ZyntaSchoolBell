@@ -16,6 +16,7 @@ jobs:
   auto-pr-merge:
     name: Auto Create PR → Merge → Cleanup
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     # Only run if CI Gate succeeded and it was a push event (not PR)
     if: >
       github.event.workflow_run.conclusion == 'success' &&
@@ -126,22 +127,28 @@ jobs:
           PR_NUMBER="${{ steps.pr.outputs.number }}"
           echo "Merging PR #$PR_NUMBER..."
 
-          # Wait for GitHub to register the PR as mergeable
-          sleep 10
+          # Retry loop — GitHub PR mergeable status ලැබෙනකන් බලා සිටිනවා
+          MAX_RETRIES=5
+          for i in $(seq 1 $MAX_RETRIES); do
+            sleep $((i * 5))
+            MERGEABLE=$(gh pr view "$PR_NUMBER" --json mergeable --jq '.mergeable')
+            echo "Attempt $i/$MAX_RETRIES — PR mergeable status: $MERGEABLE"
 
-          # Direct squash merge — CI already passed on the push event
-          MERGEABLE=$(gh pr view "$PR_NUMBER" --json mergeable --jq '.mergeable')
-          echo "PR mergeable status: $MERGEABLE"
+            if [ "$MERGEABLE" == "MERGEABLE" ]; then
+              gh pr merge "$PR_NUMBER" --squash --delete-branch \
+                --subject "$(gh pr view "$PR_NUMBER" --json title --jq '.title')" \
+                --body "Auto-merged after CI Gate passed. PR #$PR_NUMBER"
+              echo "PR #$PR_NUMBER merged and branch deleted."
+              exit 0
+            elif [ "$MERGEABLE" == "CONFLICTING" ]; then
+              echo "::error::PR #$PR_NUMBER has conflicts. Manual merge needed."
+              exit 1
+            fi
+            # UNKNOWN status — GitHub තාම processing. Retry කරනවා.
+          done
 
-          if [ "$MERGEABLE" == "MERGEABLE" ]; then
-            gh pr merge "$PR_NUMBER" --squash --delete-branch \
-              --subject "$(gh pr view "$PR_NUMBER" --json title --jq '.title')" \
-              --body "Auto-merged after CI Gate passed. PR #$PR_NUMBER"
-            echo "PR #$PR_NUMBER merged and branch deleted."
-          else
-            echo "::error::PR #$PR_NUMBER is not mergeable (status: $MERGEABLE). Manual merge needed."
-            exit 1
-          fi
+          echo "::error::PR #$PR_NUMBER is not mergeable after $MAX_RETRIES attempts (status: $MERGEABLE)."
+          exit 1
 
       - name: Create version tag
         id: tag
