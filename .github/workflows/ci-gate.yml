@@ -148,7 +148,7 @@ jobs:
             || { echo "[FAIL] Missing required functionality"; exit 1; }
 
   # ============================================================
-  # Stage 2: Installer Build (depends on build only)
+  # Stage 2: Installer Build (depends on all Stage 1 jobs)
   # ============================================================
   installer:
     name: Build Installer
