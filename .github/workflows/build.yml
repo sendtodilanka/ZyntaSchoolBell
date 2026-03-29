@@ -26,6 +26,16 @@ jobs:
       - name: Build (Release)
         run: msbuild ZyntaSchoolBell.sln /p:Configuration=Release
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Generate audio files
+        run: |
+          pip install edge-tts
+          python tools/generate_audio.py
+
       - name: Install Inno Setup
         run: choco install innosetup --yes --no-progress
 
