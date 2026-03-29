@@ -69,7 +69,7 @@ jobs:
             'connectionstring\s*=\s*"[^"]+' \
             'private[_-]?key' \
             'BEGIN\s+(RSA|DSA|EC|OPENSSH)\s+PRIVATE\s+KEY'; do
-            if grep -rniE "$pattern" --include="*.cs" --include="*.json" --include="*.config" --include="*.xml" . 2>/dev/null; then
+            if grep -rniE "$pattern" --include="*.cs" --include="*.json" --include="*.config" --include="*.xml" --include="*.py" --include="*.sh" --include="*.ps1" --include="*.yml" --include="*.yaml" . 2>/dev/null; then
               echo "::warning::Potential secret found matching: $pattern"
               FOUND=1
             fi

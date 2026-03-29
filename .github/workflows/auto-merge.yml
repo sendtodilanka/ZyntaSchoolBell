@@ -12,9 +12,9 @@ permissions:
   contents: write
   pull-requests: write
 
-# Parallel run වෙන්නේ නැතුව queue එකේ wait කරනවා
+# Branch එකකට එකම merge run එකක් — different branches parallel වෙනවා (#8)
 concurrency:
-  group: auto-merge-pipeline
+  group: auto-merge-${{ github.event.workflow_run.head_branch }}
   cancel-in-progress: false
 
 jobs:
@@ -33,6 +33,15 @@ jobs:
           ref: ${{ github.event.workflow_run.head_branch }}
           token: ${{ secrets.PAT_TOKEN }}
 
+      - name: Validate branch name
+        run: |
+          BRANCH="${{ github.event.workflow_run.head_branch }}"
+          if ! echo "$BRANCH" | grep -qE '^[a-zA-Z0-9._/\-]+$'; then
+            echo "::error::Invalid branch name: '$BRANCH'. Only alphanumerics, dots, slashes, underscores and hyphens are allowed."
+            exit 1
+          fi
+          echo "Branch name validated: $BRANCH"
+
       - name: Get branch info
         id: branch
         run: |
@@ -43,17 +52,19 @@ jobs:
           COMMIT_MSG=$(git log -1 --pretty=format:"%s")
           COMMIT_BODY=$(git log -1 --pretty=format:"%b")
           COMMIT_SHA=$(git rev-parse --short HEAD)
-          AUTHOR=$(git log -1 --pretty=format:"%an")
+          # Strip newlines/carriage returns to prevent GITHUB_OUTPUT injection (#3)
+          AUTHOR=$(git log -1 --pretty=format:"%an" | tr -d '\n\r')
 
           echo "commit_msg=$COMMIT_MSG" >> "$GITHUB_OUTPUT"
           echo "commit_sha=$COMMIT_SHA" >> "$GITHUB_OUTPUT"
           echo "author=$AUTHOR" >> "$GITHUB_OUTPUT"
 
-          # Multi-line body needs delimiter
+          # Random delimiter prevents commit body from closing it early (#2)
+          DELIM="BODY_EOF_$(openssl rand -hex 8)"
           {
-            echo "commit_body<<BODY_EOF"
+            echo "commit_body<<$DELIM"
             echo "$COMMIT_BODY"
-            echo "BODY_EOF"
+            echo "$DELIM"
           } >> "$GITHUB_OUTPUT"
 
           # Count commits ahead of main
@@ -126,6 +137,38 @@ jobs:
             echo "number=${{ steps.create_pr.outputs.pr_number }}" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Wait for CI Gate checks on PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER="${{ steps.pr.outputs.number }}"
+          echo "Waiting for CI Gate checks to complete on PR #$PR_NUMBER..."
+
+          # PR create වෙලා CI Gate checks run වෙනකම් wait කරනවා
+          # Human intervention නෑ — CI Gate pass වීම ම gate එක
+          MAX_WAIT=18   # 18 × 20s = 6 minutes maximum
+          for i in $(seq 1 $MAX_WAIT); do
+            FAILED=$(gh pr checks "$PR_NUMBER" --json name,state \
+              --jq '[.[] | select(.state == "FAILURE" or .state == "ERROR")] | length')
+            PENDING=$(gh pr checks "$PR_NUMBER" --json name,state \
+              --jq '[.[] | select(.state == "PENDING" or .state == "IN_PROGRESS")] | length')
+
+            echo "Attempt $i/$MAX_WAIT — Failed: $FAILED, Pending: $PENDING"
+
+            if [ "$FAILED" -gt 0 ]; then
+              echo "::error::CI Gate failed on PR #$PR_NUMBER. Auto-merge aborted."
+              gh pr checks "$PR_NUMBER"
+              exit 1
+            fi
+
+            if [ "$PENDING" -eq 0 ]; then
+              echo "All CI Gate checks passed on PR #$PR_NUMBER."
+              break
+            fi
+
+            sleep 20
+          done
+
       - name: Merge Pull Request
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -161,27 +204,27 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Generate and commit audio files to main
-        env:
-          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+      - name: Generate audio files
         run: |
-          # main branch checkout කරනවා
+          # main branch checkout කරනවා (PAT_TOKEN env නෑ — Python script isolate කිරීමට)
           git fetch origin main
           git checkout main
           git pull origin main
 
-          # Audio generate කරනවා
-          pip install edge-tts
+          pip install gtts
           python tools/generate_audio.py
 
+      - name: Commit audio files to main
+        run: |
           # Audio files commit කරනවා (වෙනසක් තියෙනවා නම් පමණයි)
+          # git credentials checkout step PAT_TOKEN වලින් set වෙලා — GH_TOKEN env අවශ්‍ය නෑ
           git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           git add audio/
           if git diff --staged --quiet; then
             echo "Audio files already up to date."
           else
-            git commit -m "Audio files generate කිරීම (edge-tts)"
+            git commit -m "Audio files generate කිරීම (gtts)"
             git push origin main
             echo "Audio files committed to main."
           fi
@@ -189,7 +232,7 @@ jobs:
       - name: Create version tag
         id: tag
         env:
-          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # main branch එකේ latest code fetch කරනවා (audio commit එකත් ගන්නවා)
           git fetch origin main --tags
@@ -213,13 +256,17 @@ jobs:
           echo "New tag: $NEW_TAG"
 
           # Tag එක හදනවා main branch එකේ latest commit එකට
+          # Race condition: concurrent runs same tag create කරන්නට try කරොත් gracefully skip (#9)
           MAIN_SHA=$(git rev-parse origin/main)
-          gh api repos/${{ github.repository }}/git/refs \
-            -f ref="refs/tags/$NEW_TAG" \
-            -f sha="$MAIN_SHA"
-
-          echo "tag=$NEW_TAG" >> "$GITHUB_OUTPUT"
-          echo "Tagged $MAIN_SHA as $NEW_TAG — Release workflow triggers automatically."
+          if gh api repos/${{ github.repository }}/git/refs \
+              -f ref="refs/tags/$NEW_TAG" \
+              -f sha="$MAIN_SHA" 2>/dev/null; then
+            echo "tag=$NEW_TAG" >> "$GITHUB_OUTPUT"
+            echo "Tagged $MAIN_SHA as $NEW_TAG — Release workflow triggers automatically."
+          else
+            echo "::warning::Tag $NEW_TAG already exists or creation failed (race condition). Skipping."
+            echo "tag=$NEW_TAG" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Summary
         run: |
