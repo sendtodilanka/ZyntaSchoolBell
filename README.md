@@ -17,7 +17,7 @@ A lightweight Windows desktop application that plays pre-recorded multilingual a
 - **Audio**: NAudio 2.2.1
 - **JSON**: Newtonsoft.Json 13.x
 - **Installer**: Inno Setup 6 (per-user, no UAC)
-- **Audio Generation**: Python edge-tts
+- **Audio Generation**: Python gtts
 
 ## Building
 
@@ -26,7 +26,7 @@ A lightweight Windows desktop application that plays pre-recorded multilingual a
 - Visual Studio 2019+ with .NET Framework 4.8 targeting pack
 - NuGet package manager
 - (Optional) Inno Setup 6 for building the installer
-- (Optional) Python 3.8+ with edge-tts for audio generation
+- (Optional) Python 3.8+ with gtts for audio generation
 
 ### Build Steps
 
@@ -56,7 +56,7 @@ A lightweight Windows desktop application that plays pre-recorded multilingual a
 Generate all 45 MP3 files (15 audio keys × 3 languages):
 
 ```
-pip install edge-tts
+pip install gtts
 python tools/generate_audio.py
 ```
 
