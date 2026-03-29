@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-ZyntaSchoolBell Audio Generator v1.0
+ZyntaSchoolBell Audio Generator v2.0
 
 Generates multilingual audio announcements (Sinhala, Tamil, English)
-for all school bell types using Microsoft Edge TTS.
+for all school bell types using Google Text-to-Speech (gTTS).
 
 Usage:
-    pip install edge-tts
+    pip install gtts
     python generate_audio.py
 """
 
@@ -15,29 +15,20 @@ import os
 import sys
 
 try:
-    import edge_tts
+    from gtts import gTTS
 except ImportError:
-    print("ERROR: edge-tts not installed. Run: pip install edge-tts")
+    print("ERROR: gtts not installed. Run: pip install gtts")
     sys.exit(1)
 
 # Output directory (relative to repo root)
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 AUDIO_DIR = os.path.join(SCRIPT_DIR, "..", "audio")
 
-# Voice configuration
-VOICES = {
-    "si": {
-        "primary": "si-LK-SameeraNeural",
-        "fallback": "si-LK-ThiliniNeural",
-    },
-    "ta": {
-        "primary": "ta-LK-KumarNeural",
-        "fallback": "ta-IN-PallaviNeural",
-    },
-    "en": {
-        "primary": "en-US-AriaNeural",
-        "fallback": "en-US-AriaNeural",
-    },
+# Google TTS language codes
+LANG_CODES = {
+    "si": "si",
+    "ta": "ta",
+    "en": "en",
 }
 
 # Audio announcements: audioKey -> {lang: text}
@@ -120,38 +111,24 @@ ANNOUNCEMENTS = {
 }
 
 
-async def generate_audio(audio_key, lang, text, voice_config):
-    """Generate a single audio file using edge-tts."""
+def generate_audio(audio_key, lang, text, lang_code):
+    """Generate a single audio file using Google TTS."""
     output_dir = os.path.join(AUDIO_DIR, audio_key)
     os.makedirs(output_dir, exist_ok=True)
     output_file = os.path.join(output_dir, f"{lang}.mp3")
 
-    voice = voice_config["primary"]
     try:
-        communicate = edge_tts.Communicate(text, voice)
-        await communicate.save(output_file)
-        print(f"  [OK] {audio_key}/{lang}.mp3 (voice: {voice})")
+        tts = gTTS(text=text, lang=lang_code, slow=False)
+        tts.save(output_file)
+        print(f"  [OK] {audio_key}/{lang}.mp3 (lang: {lang_code})")
         return True
     except Exception as e:
-        print(f"  [WARN] Primary voice failed for {audio_key}/{lang}: {e}")
-        # Try fallback voice
-        fallback = voice_config["fallback"]
-        if fallback != voice:
-            try:
-                communicate = edge_tts.Communicate(text, fallback)
-                await communicate.save(output_file)
-                print(f"  [OK] {audio_key}/{lang}.mp3 (fallback voice: {fallback})")
-                return True
-            except Exception as e2:
-                print(f"  [ERROR] Fallback also failed for {audio_key}/{lang}: {e2}")
-                return False
-        else:
-            print(f"  [ERROR] No fallback available for {audio_key}/{lang}")
-            return False
+        print(f"  [ERROR] {audio_key}/{lang}: {e}")
+        return False
 
 
 async def main():
-    print("ZyntaSchoolBell Audio Generator")
+    print("ZyntaSchoolBell Audio Generator v2.0 (Google TTS)")
     print("=" * 40)
     print(f"Output directory: {os.path.abspath(AUDIO_DIR)}")
     print()
@@ -165,8 +142,8 @@ async def main():
         for lang in ["si", "en", "ta"]:
             total += 1
             text = texts[lang]
-            voice_config = VOICES[lang]
-            result = await generate_audio(audio_key, lang, text, voice_config)
+            lang_code = LANG_CODES[lang]
+            result = generate_audio(audio_key, lang, text, lang_code)
             if result:
                 success += 1
             else:
