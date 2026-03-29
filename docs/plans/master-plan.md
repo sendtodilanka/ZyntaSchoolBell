@@ -331,7 +331,7 @@ Simple file logger — no external dependencies:
 
 ### `tools/generate_audio.py`
 
-Python script using `edge-tts`:
+Python script using `gtts`:
 - Generates audio for 15 audio keys x 3 languages (45 files total)
 - Audio keys: `opening_bell`, `period_1` through `period_8`, `interval`, `lunch_break`, `afternoon_bell`, `closing_bell`, `warning_bell`, `assembly`
 - Each period has unique ordinal announcements:
@@ -491,7 +491,7 @@ OutputBaseFilename=ZyntaSchoolBell-Setup
 | Timer drift over hours | Missed alarms | 1s tick is sufficient — compare HH:mm strings, not exact timestamps |
 | NAudio memory leak | App bloats over time | Strict `IDisposable`; dispose `WaveOutEvent` + `Mp3FileReader` after each playback |
 | MP3 files bloat git | Slow clones | Git LFS for `audio/**/*.mp3` |
-| edge-tts API down | Can't generate audio | Pre-generated audio committed to repo; script is for regeneration only |
+| gtts API down | Can't generate audio | Pre-generated audio committed to repo; script is for regeneration only |
 | Sinhala/Tamil encoding | Corrupted text in JSON | UTF-8 without BOM; `JsonConvert` handles Unicode natively |
 | Dual launch | Conflicting timers | Named Mutex single-instance check |
 | Inno Setup not on CI | Build fails | Install via Chocolatey in GitHub Actions workflow |
@@ -516,7 +516,7 @@ OutputBaseFilename=ZyntaSchoolBell-Setup
 | `src/ZyntaSchoolBell/UI/TrayManager.cs` | System tray integration |
 | `installer/ZyntaSchoolBell.iss` | Inno Setup script |
 | `installer/default_profiles/*.json` | 5 default schedule profiles |
-| `tools/generate_audio.py` | edge-tts audio generation |
+| `tools/generate_audio.py` | gtts audio generation |
 
 ---
 
