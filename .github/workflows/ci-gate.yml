@@ -6,6 +6,11 @@ on:
       - '**'
       - '!main'
 
+# එකම branch එකට multiple CI runs conflict නොවෙන්න
+concurrency:
+  group: ci-gate-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   # ============================================================
   # Stage 1: Build, Security & Performance (parallel)
@@ -13,10 +18,9 @@ jobs:
   build:
     name: Build & Compile
     runs-on: windows-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-        with:
-          lfs: true
 
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
@@ -51,6 +55,7 @@ jobs:
   security:
     name: Security Analysis
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
 
@@ -94,6 +99,7 @@ jobs:
   performance:
     name: Performance & Reliability
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
 
@@ -147,11 +153,10 @@ jobs:
   installer:
     name: Build Installer
     runs-on: windows-latest
-    needs: [build]
+    timeout-minutes: 20
+    needs: [build, security, performance]
     steps:
       - uses: actions/checkout@v4
-        with:
-          lfs: true
 
       - name: Download build artifacts
         uses: actions/download-artifact@v4

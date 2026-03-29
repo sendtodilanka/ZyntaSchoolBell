@@ -12,10 +12,9 @@ jobs:
   release:
     name: Build & Publish Release
     runs-on: windows-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-        with:
-          lfs: true
 
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
@@ -35,6 +34,34 @@ jobs:
         run: |
           pip install edge-tts
           python tools/generate_audio.py
+
+      - name: Verify audio files
+        run: |
+          $audioDir = "audio"
+          $expected = @(
+            "opening_bell", "period_1", "period_2", "period_3", "period_4",
+            "period_5", "period_6", "period_7", "period_8", "interval",
+            "lunch_break", "afternoon_bell", "closing_bell", "warning_bell", "assembly"
+          )
+          $missing = @()
+          foreach ($key in $expected) {
+            foreach ($lang in @("si", "en", "ta")) {
+              $file = "$audioDir\$key\$lang.mp3"
+              if (!(Test-Path $file)) {
+                $missing += $file
+              } elseif ((Get-Item $file).Length -lt 1KB) {
+                $missing += "$file (too small)"
+              }
+            }
+          }
+          if ($missing.Count -gt 0) {
+            Write-Error "Missing or invalid audio files:"
+            $missing | ForEach-Object { Write-Error "  $_" }
+            exit 1
+          }
+          $total = (Get-ChildItem -Path $audioDir -Recurse -Filter *.mp3).Count
+          Write-Host "Audio verification passed: $total MP3 files generated."
+        shell: pwsh
 
       - name: Install Inno Setup
         run: choco install innosetup --yes --no-progress
