@@ -20,6 +20,16 @@ jobs:
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Generate audio files
+        run: |
+          pip install edge-tts
+          python tools/generate_audio.py
+
       - name: Restore NuGet packages
         run: msbuild ZyntaSchoolBell.sln /t:Restore
 
