@@ -201,6 +201,7 @@ jobs:
         shell: pwsh
 
       - name: Commit audio files to repo
+        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
