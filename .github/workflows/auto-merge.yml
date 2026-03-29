@@ -12,6 +12,11 @@ permissions:
   contents: write
   pull-requests: write
 
+# Parallel run වෙන්නේ නැතුව queue එකේ wait කරනවා
+concurrency:
+  group: auto-merge-pipeline
+  cancel-in-progress: false
+
 jobs:
   auto-pr-merge:
     name: Auto Create PR → Merge → Cleanup
