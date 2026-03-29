@@ -142,15 +142,52 @@ jobs:
             echo "::warning::PR #$PR_NUMBER is not mergeable yet (status: $MERGEABLE). Manual merge needed."
           fi
 
+      - name: Create version tag
+        id: tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # main branch එකේ latest code fetch කරනවා
+          git fetch origin main --tags
+
+          # Latest tag එක ගන්නවා (v1.0.0 format)
+          LATEST_TAG=$(git tag --list 'v*' --sort=-version:refname | head -1)
+
+          if [ -z "$LATEST_TAG" ]; then
+            # tag නැත්නම් v1.0.0 ඉඳන් පටන් ගන්නවා
+            NEW_TAG="v1.0.0"
+          else
+            # Patch version එක increment කරනවා (v1.0.5 → v1.0.6)
+            MAJOR=$(echo "$LATEST_TAG" | cut -d. -f1)
+            MINOR=$(echo "$LATEST_TAG" | cut -d. -f2)
+            PATCH=$(echo "$LATEST_TAG" | cut -d. -f3)
+            NEW_PATCH=$((PATCH + 1))
+            NEW_TAG="${MAJOR}.${MINOR}.${NEW_PATCH}"
+          fi
+
+          echo "Latest tag: ${LATEST_TAG:-none}"
+          echo "New tag: $NEW_TAG"
+
+          # Tag එක හදනවා main branch එකේ latest commit එකට
+          MAIN_SHA=$(git rev-parse origin/main)
+          gh api repos/${{ github.repository }}/git/refs \
+            -f ref="refs/tags/$NEW_TAG" \
+            -f sha="$MAIN_SHA"
+
+          echo "tag=$NEW_TAG" >> "$GITHUB_OUTPUT"
+          echo "Tagged $MAIN_SHA as $NEW_TAG — Release workflow triggers automatically."
+
       - name: Summary
         run: |
           BRANCH="${{ steps.branch.outputs.name }}"
           PR_NUMBER="${{ steps.pr.outputs.number }}"
+          TAG="${{ steps.tag.outputs.tag }}"
           echo "## Auto-Merge Summary" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "| Item | Value |" >> "$GITHUB_STEP_SUMMARY"
           echo "|------|-------|" >> "$GITHUB_STEP_SUMMARY"
           echo "| Branch | \`$BRANCH\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| PR | #$PR_NUMBER |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Tag | \`$TAG\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| CI Gate | Passed |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Action | Auto-merge + branch delete |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Action | Auto-merge + tag + release |" >> "$GITHUB_STEP_SUMMARY"
