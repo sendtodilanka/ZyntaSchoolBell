@@ -137,6 +137,38 @@ jobs:
             echo "number=${{ steps.create_pr.outputs.pr_number }}" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Wait for CI Gate checks on PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER="${{ steps.pr.outputs.number }}"
+          echo "Waiting for CI Gate checks to complete on PR #$PR_NUMBER..."
+
+          # PR create වෙලා CI Gate checks run වෙනකම් wait කරනවා
+          # Human intervention නෑ — CI Gate pass වීම ම gate එක
+          MAX_WAIT=18   # 18 × 20s = 6 minutes maximum
+          for i in $(seq 1 $MAX_WAIT); do
+            FAILED=$(gh pr checks "$PR_NUMBER" --json name,state \
+              --jq '[.[] | select(.state == "FAILURE" or .state == "ERROR")] | length')
+            PENDING=$(gh pr checks "$PR_NUMBER" --json name,state \
+              --jq '[.[] | select(.state == "PENDING" or .state == "IN_PROGRESS")] | length')
+
+            echo "Attempt $i/$MAX_WAIT — Failed: $FAILED, Pending: $PENDING"
+
+            if [ "$FAILED" -gt 0 ]; then
+              echo "::error::CI Gate failed on PR #$PR_NUMBER. Auto-merge aborted."
+              gh pr checks "$PR_NUMBER"
+              exit 1
+            fi
+
+            if [ "$PENDING" -eq 0 ]; then
+              echo "All CI Gate checks passed on PR #$PR_NUMBER."
+              break
+            fi
+
+            sleep 20
+          done
+
       - name: Merge Pull Request
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
