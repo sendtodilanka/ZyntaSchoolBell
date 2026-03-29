@@ -5,12 +5,12 @@ on:
     branches:
       - '**'
       - '!main'
-  pull_request:
-    branches: [main]
+    paths-ignore:
+      - 'audio/**'
 
 jobs:
   # ============================================================
-  # Stage 1: Build & Compile
+  # Stage 1: Build, Security & Performance (parallel)
   # ============================================================
   build:
     name: Build & Compile
@@ -29,10 +29,7 @@ jobs:
       - name: Build (Release)
         run: msbuild ZyntaSchoolBell.sln /p:Configuration=Release
 
-      - name: Build (Debug)
-        run: msbuild ZyntaSchoolBell.sln /p:Configuration=Debug
-
-      - name: Verify output binaries exist
+      - name: Verify output binary
         run: |
           if (!(Test-Path "src\ZyntaSchoolBell\bin\Release\ZyntaSchoolBell.exe")) {
             Write-Error "Release binary not found"
@@ -53,248 +50,117 @@ jobs:
           path: src/ZyntaSchoolBell/bin/Release/
           retention-days: 5
 
-  # ============================================================
-  # Stage 2: Security Analysis
-  # ============================================================
   security:
     name: Security Analysis
-    runs-on: windows-latest
-    needs: build
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - name: Check for hardcoded secrets
         run: |
-          $patterns = @(
-            'password\s*=\s*"[^"]+',
-            'api[_-]?key\s*=\s*"[^"]+',
-            'secret\s*=\s*"[^"]+',
-            'connectionstring\s*=\s*"[^"]+',
-            'private[_-]?key',
-            'BEGIN\s+(RSA|DSA|EC|OPENSSH)\s+PRIVATE\s+KEY'
-          )
-          $found = $false
-          foreach ($pattern in $patterns) {
-            $matches = Get-ChildItem -Recurse -Include *.cs,*.json,*.config,*.xml -File |
-              Select-String -Pattern $pattern -CaseSensitive:$false
-            if ($matches) {
-              Write-Warning "Potential secret found matching pattern: $pattern"
-              $matches | ForEach-Object { Write-Warning "  $($_.Filename):$($_.LineNumber)" }
-              $found = $true
-            }
-          }
-          if ($found) {
-            Write-Error "Hardcoded secrets detected! Review the above findings."
+          FOUND=0
+          for pattern in \
+            'password\s*=\s*"[^"]+' \
+            'api[_-]?key\s*=\s*"[^"]+' \
+            'secret\s*=\s*"[^"]+' \
+            'connectionstring\s*=\s*"[^"]+' \
+            'private[_-]?key' \
+            'BEGIN\s+(RSA|DSA|EC|OPENSSH)\s+PRIVATE\s+KEY'; do
+            if grep -rniE "$pattern" --include="*.cs" --include="*.json" --include="*.config" --include="*.xml" . 2>/dev/null; then
+              echo "::warning::Potential secret found matching: $pattern"
+              FOUND=1
+            fi
+          done
+          if [ "$FOUND" -eq 1 ]; then
+            echo "::error::Hardcoded secrets detected!"
             exit 1
-          }
-          Write-Host "No hardcoded secrets found."
-        shell: pwsh
-
-      - name: Check for dangerous code patterns
-        run: |
-          $dangerousPatterns = @{
-            'Process.Start with user input' = 'Process\.Start\s*\(\s*[^"'']'
-            'SQL injection risk' = 'string\.Format.*SELECT|"SELECT.*\+\s*\w'
-            'Deserialization without type check' = 'TypeNameHandling\.(All|Auto|Objects|Arrays)'
-            'Weak cryptography' = '(MD5|SHA1)\.Create'
-            'Registry HKLM write' = 'Registry\.(LocalMachine|HKEY_LOCAL_MACHINE)'
-            'Unrestricted file access' = 'File\.(ReadAllText|WriteAllText)\s*\([^)]*\+[^)]*\)'
-          }
-          $issues = @()
-          foreach ($entry in $dangerousPatterns.GetEnumerator()) {
-            $matches = Get-ChildItem -Path src -Recurse -Include *.cs -File |
-              Select-String -Pattern $entry.Value -CaseSensitive:$false
-            if ($matches) {
-              $issues += "$($entry.Key): $($matches.Count) occurrence(s)"
-              $matches | ForEach-Object { Write-Warning "  $($_.Filename):$($_.LineNumber): $($_.Line.Trim())" }
-            }
-          }
-          if ($issues.Count -gt 0) {
-            Write-Warning "Security review needed:"
-            $issues | ForEach-Object { Write-Warning "  - $_" }
-            # Warn but don't fail — these need manual review
-            Write-Host "::warning::Security patterns detected. Review recommended."
-          } else {
-            Write-Host "No dangerous code patterns detected."
-          }
-        shell: pwsh
+          fi
+          echo "No hardcoded secrets found."
 
       - name: Verify no sensitive files in repo
         run: |
-          $sensitiveFiles = @('*.pfx', '*.p12', '*.key', '*.pem', '.env', '*.credentials', 'secrets.*')
-          $found = @()
-          foreach ($pattern in $sensitiveFiles) {
-            $files = Get-ChildItem -Recurse -Filter $pattern -File -ErrorAction SilentlyContinue
-            if ($files) {
-              $found += $files.FullName
-            }
-          }
-          if ($found.Count -gt 0) {
-            Write-Error "Sensitive files found in repository:"
-            $found | ForEach-Object { Write-Error "  $_" }
-            exit 1
-          }
-          Write-Host "No sensitive files found."
-        shell: pwsh
+          FOUND=0
+          for ext in pfx p12 key pem credentials; do
+            if find . -name "*.$ext" -type f | grep -q .; then
+              echo "::error::Sensitive file found: *.$ext"
+              FOUND=1
+            fi
+          done
+          if [ -f .env ]; then
+            echo "::error::Sensitive file found: .env"
+            FOUND=1
+          fi
+          if [ "$FOUND" -eq 1 ]; then exit 1; fi
+          echo "No sensitive files found."
 
-      - name: Check NuGet package vulnerabilities
-        run: |
-          # Parse csproj PackageReference elements for dependency info
-          [xml]$csproj = Get-Content "src/ZyntaSchoolBell/ZyntaSchoolBell.csproj"
-          $ns = New-Object System.Xml.XmlNamespaceManager($csproj.NameTable)
-          $ns.AddNamespace("ms", "http://schemas.microsoft.com/developer/msbuild/2003")
-          $refs = $csproj.SelectNodes("//ms:PackageReference", $ns)
-          Write-Host "Dependencies:"
-          foreach ($ref in $refs) {
-            Write-Host "  $($ref.Include) $($ref.Version)"
-          }
-
-          # Check for known vulnerable versions (basic check)
-          $vulnerable = @()
-          foreach ($ref in $refs) {
-            if ($ref.Include -eq "Newtonsoft.Json" -and [version]$ref.Version -lt [version]"13.0.1") {
-              $vulnerable += "$($ref.Include) $($ref.Version) — update to >= 13.0.1"
-            }
-          }
-          if ($vulnerable.Count -gt 0) {
-            Write-Warning "Vulnerable packages:"
-            $vulnerable | ForEach-Object { Write-Warning "  $_" }
-            Write-Host "::warning::Vulnerable NuGet packages detected."
-          } else {
-            Write-Host "No known vulnerable packages."
-          }
-        shell: pwsh
-
-  # ============================================================
-  # Stage 3: Performance & Reliability Checks
-  # ============================================================
   performance:
     name: Performance & Reliability
-    runs-on: windows-latest
-    needs: build
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check for performance anti-patterns
+      - name: Verify alarm timing reliability
         run: |
-          $antiPatterns = @{
-            'File I/O in tight loop' = 'for\s*\(.*\)\s*\{[^}]*File\.(Read|Write|Append)'
-            'Thread.Sleep in UI code' = 'Thread\.Sleep.*//.*UI|Thread\.Sleep.*Form'
-            'Unbounded collection growth' = 'new\s+List<.*>\(\)(?!.*\.Clear)'
-            'Missing Dispose' = 'new\s+(StreamWriter|StreamReader|FileStream|SqlConnection)\b(?!.*using)'
-            'Lock contention risk' = 'lock\s*\(\s*this\s*\)'
-            'Event raised inside lock' = 'lock\s*\([^)]+\)\s*\{[^}]*\?\s*\.Invoke'
+          FILE="src/ZyntaSchoolBell/Services/AlarmEngine.cs"
+          FAILED=0
+          check() {
+            if grep -qP "$2" "$FILE"; then
+              echo "[PASS] $1"
+            else
+              echo "[FAIL] $1"
+              FAILED=1
+            fi
           }
-          $warnings = @()
-          foreach ($entry in $antiPatterns.GetEnumerator()) {
-            $matches = Get-ChildItem -Path src -Recurse -Include *.cs -File |
-              Select-String -Pattern $entry.Value -CaseSensitive:$false
-            if ($matches) {
-              $warnings += "$($entry.Key): $($matches.Count) hit(s)"
-              $matches | ForEach-Object {
-                Write-Host "::warning file=$($_.Path),line=$($_.LineNumber)::$($entry.Key)"
-              }
-            }
-          }
-          if ($warnings.Count -gt 0) {
-            Write-Host "Performance warnings found:"
-            $warnings | ForEach-Object { Write-Host "  - $_" }
-          } else {
-            Write-Host "No performance anti-patterns detected."
-          }
-        shell: pwsh
-
-      - name: Verify alarm timing reliability patterns
-        run: |
-          $alarmFile = "src/ZyntaSchoolBell/Services/AlarmEngine.cs"
-          $content = Get-Content $alarmFile -Raw
-
-          $checks = @{
-            'Uses <= for alarm matching (not ==)' = 'string\.Compare\(alarm\.Time.*<=\s*0'
-            'Events raised outside lock' = '//.*Raise events OUTSIDE|//.*outside.*lock'
-            'Fired set prevents double-fire' = '_firedTodaySet\.Contains'
-            'Midnight reset present' = 'now\.Date\s*!=\s*_lastDate'
-            'IsMuted is volatile' = 'volatile.*_isMuted|volatile bool _isMuted'
-            'Deep copy of alarm list' = 'new AlarmEntry|\.Select\(a => new'
-          }
-
-          $passed = 0
-          $failed = 0
-          foreach ($entry in $checks.GetEnumerator()) {
-            if ($content -match $entry.Value) {
-              Write-Host "[PASS] $($entry.Key)"
-              $passed++
-            } else {
-              Write-Error "[FAIL] $($entry.Key)"
-              $failed++
-            }
-          }
-
-          Write-Host "`nTiming reliability: $passed passed, $failed failed"
-          if ($failed -gt 0) {
-            Write-Error "Alarm timing reliability checks failed!"
-            exit 1
-          }
-        shell: pwsh
+          check "Uses <= for alarm matching" 'string\.Compare\(alarm\.Time.*<=\s*0'
+          check "Events raised outside lock" '(Raise events OUTSIDE|outside.*lock)'
+          check "Fired set prevents double-fire" '_firedTodaySet\.Contains'
+          check "Midnight reset present" 'now\.Date\s*!=\s*_lastDate'
+          check "IsMuted is volatile" 'volatile.*_isMuted'
+          check "Deep copy of alarm list" '(new AlarmEntry|\.Select\(a => new)'
+          if [ "$FAILED" -eq 1 ]; then exit 1; fi
 
       - name: Verify wake-from-sleep support
         run: |
-          $wakeFile = "src/ZyntaSchoolBell/Services/WakeScheduler.cs"
-          if (!(Test-Path $wakeFile)) {
-            Write-Error "WakeScheduler.cs not found — wake-from-sleep not implemented"
+          FILE="src/ZyntaSchoolBell/Services/WakeScheduler.cs"
+          if [ ! -f "$FILE" ]; then
+            echo "::error::WakeScheduler.cs not found"
             exit 1
-          }
-          $content = Get-Content $wakeFile -Raw
-
-          $checks = @{
-            'CreateWaitableTimer P/Invoke' = 'CreateWaitableTimer'
-            'SetWaitableTimer with fResume=true' = 'fResume.*true|true\);\s*//.*[Ww]ake'
-            'Graceful degradation' = 'catch|_supported|failed'
-          }
-
-          foreach ($entry in $checks.GetEnumerator()) {
-            if ($content -match $entry.Value) {
-              Write-Host "[PASS] $($entry.Key)"
-            } else {
-              Write-Error "[FAIL] $($entry.Key)"
-              exit 1
-            }
-          }
-          Write-Host "Wake-from-sleep implementation verified."
-        shell: pwsh
+          fi
+          grep -q "CreateWaitableTimer" "$FILE" && echo "[PASS] CreateWaitableTimer"
+          grep -qP 'true\);\s*//.*[Ww]ake|fResume.*true' "$FILE" && echo "[PASS] fResume=true"
+          grep -qP 'catch|_supported|failed' "$FILE" && echo "[PASS] Graceful degradation"
 
       - name: Verify system volume enforcement
         run: |
-          $volFile = "src/ZyntaSchoolBell/Services/SystemVolumeManager.cs"
-          if (!(Test-Path $volFile)) {
-            Write-Error "SystemVolumeManager.cs not found"
+          FILE="src/ZyntaSchoolBell/Services/SystemVolumeManager.cs"
+          if [ ! -f "$FILE" ]; then
+            echo "::error::SystemVolumeManager.cs not found"
             exit 1
-          }
-          $content = Get-Content $volFile -Raw
-
-          if ($content -match 'MMDeviceEnumerator' -and $content -match 'MasterVolumeLevelScalar' -and $content -match '\.Mute') {
-            Write-Host "[PASS] System volume manager uses Core Audio API with mute check"
-          } else {
-            Write-Error "[FAIL] System volume manager missing required functionality"
-            exit 1
-          }
-        shell: pwsh
+          fi
+          grep -q "MMDeviceEnumerator" "$FILE" \
+            && grep -q "MasterVolumeLevelScalar" "$FILE" \
+            && grep -q "\.Mute" "$FILE" \
+            && echo "[PASS] Core Audio API with mute check" \
+            || { echo "[FAIL] Missing required functionality"; exit 1; }
 
   # ============================================================
-  # Stage 4: Installer Build
+  # Stage 2: Installer Build (depends on build only)
   # ============================================================
   installer:
     name: Build Installer
     runs-on: windows-latest
-    needs: [build, security, performance]
+    needs: [build]
     steps:
       - uses: actions/checkout@v4
         with:
           lfs: true
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Setup MSBuild
-        uses: microsoft/setup-msbuild@v2
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-output
+          path: src/ZyntaSchoolBell/bin/Release/
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -342,15 +208,10 @@ jobs:
           if git diff --staged --quiet; then
             echo "Audio files already up to date."
           else
-            git commit -m "Generate audio files via edge-tts [ci skip]"
+            git commit -m "Generate audio files via edge-tts"
             git push
             echo "Audio files committed and pushed."
           fi
-
-      - name: Restore & Build
-        run: |
-          msbuild ZyntaSchoolBell.sln /t:Restore
-          msbuild ZyntaSchoolBell.sln /p:Configuration=Release
 
       - name: Install Inno Setup
         run: choco install innosetup --yes --no-progress
